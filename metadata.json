@@ -1,0 +1,8 @@
+{
+  "name": "Yêu Tiếng Việt",
+  "description": "An interactive Vietnamese language learning application for children, featuring AI-powered reading exercises, storytelling, dictionary, and educational games.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
+}
