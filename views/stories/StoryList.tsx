@@ -60,7 +60,13 @@ const StoryList: React.FC<StoryListProps> = ({ stories, selectedStory, onSelectS
         ))}
       </div>
 
-      <div className="shrink-0 p-4 bg-gray-50 dark:bg-black/20 border-t border-[#cfe7d7] dark:border-gray-800">
+      {/* 
+          Responsive Player Container:
+          - lg:relative: Stays at the bottom of this sidebar on desktop.
+          - fixed bottom-0 left-0 right-0: Becomes a bottom bar on mobile/tablet.
+          - z-40 ensures it stays above the story content on mobile.
+      */}
+      <div className="shrink-0 p-4 bg-white dark:bg-[#102216] lg:bg-gray-50 lg:dark:bg-black/20 border-t border-[#cfe7d7] dark:border-gray-800 lg:relative fixed bottom-0 left-0 right-0 z-40 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] lg:shadow-none">
         {audioPlayer}
       </div>
     </aside>

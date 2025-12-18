@@ -14,12 +14,18 @@ import AdminView from './views/AdminView';
 import LiveView from './views/LiveView';
 import { authService } from './services/authService';
 
+interface ExpNotification {
+  id: number;
+  amount: number;
+}
+
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>('auth');
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [initializing, setInitializing] = useState(true);
+  const [expNotifications, setExpNotifications] = useState<ExpNotification[]>([]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -63,6 +69,24 @@ const App: React.FC = () => {
     setUser(updatedUser);
   };
 
+  const handleAwardExp = async (amount: number) => {
+    if (!user) return;
+    
+    // Thêm thông báo bay lên từ giữa màn hình
+    const id = Date.now();
+    setExpNotifications(prev => [...prev, { id, amount }]);
+    
+    // Tự động xóa sau khi hoạt ảnh kết thúc (tăng lên 2.5s để khớp CSS)
+    setTimeout(() => {
+      setExpNotifications(prev => prev.filter(n => n.id !== id));
+    }, 2500);
+
+    const updatedUser = await authService.addExperience(user.id, amount);
+    if (updatedUser) {
+      setUser(updatedUser);
+    }
+  };
+
   const handleSetView = (view: AppView, gameId?: string) => {
     if (gameId) setSelectedGameId(gameId);
     setCurrentView(view);
@@ -75,19 +99,19 @@ const App: React.FC = () => {
       case 'dashboard':
         return <DashboardView setView={setCurrentView} user={user} />;
       case 'dictionary':
-        return <DictionaryView />;
+        return <DictionaryView onAwardExp={handleAwardExp} />;
       case 'reading':
-        return <ReadingView />;
+        return <ReadingView onAwardExp={handleAwardExp} />;
       case 'profile':
         return <ProfileView user={user} onUpdate={handleUpdateProfile} />;
       case 'stories':
-        return <StoriesView />;
+        return <StoriesView onAwardExp={handleAwardExp} />;
       case 'games':
         return <GamesView setView={handleSetView} />;
       case 'live':
         return <LiveView />;
       case 'game-detail':
-        return <GameDetailView setView={handleSetView} user={user} gameId={selectedGameId || '1'} />;
+        return <GameDetailView setView={handleSetView} user={user} gameId={selectedGameId || '1'} onAwardExp={handleAwardExp} />;
       case 'admin':
         return <AdminView user={user} />;
       default:
@@ -109,16 +133,31 @@ const App: React.FC = () => {
   }
 
   return (
-    <Layout 
-      activeView={currentView} 
-      setView={setCurrentView} 
-      isDarkMode={isDarkMode}
-      toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
-      onLogout={handleLogout}
-      user={user!}
-    >
-      {renderView()}
-    </Layout>
+    <div className="relative w-full min-h-screen">
+      <Layout 
+        activeView={currentView} 
+        setView={setCurrentView} 
+        isDarkMode={isDarkMode}
+        toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+        onLogout={handleLogout}
+        user={user!}
+      >
+        {renderView()}
+      </Layout>
+
+      {/* Container cho hiệu ứng EXP bay lên bùng nổ ở giữa màn hình */}
+      <div className="fixed inset-0 flex items-center justify-center z-[9999] pointer-events-none">
+        {expNotifications.map(notif => (
+          <div 
+            key={notif.id} 
+            className="absolute animate-exp-float flex items-center gap-4 bg-primary text-text-main font-black px-10 py-5 rounded-full shadow-[0_20px_50px_rgba(19,236,91,0.5)] whitespace-nowrap border-4 border-white/20"
+          >
+            <span className="material-symbols-outlined filled text-4xl md:text-6xl text-text-main">stars</span>
+            <span className="text-3xl md:text-5xl tracking-tighter">+{notif.amount} EXP</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 };
 

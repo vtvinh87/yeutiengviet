@@ -8,13 +8,20 @@ import StoryDisplay from './stories/StoryDisplay';
 import AudioPlayer from './stories/AudioPlayer';
 import TeacherDialog from './stories/TeacherDialog';
 
-const StoriesView: React.FC = () => {
+interface StoriesViewProps {
+  onAwardExp?: (amount: number) => void;
+}
+
+const StoriesView: React.FC<StoriesViewProps> = ({ onAwardExp }) => {
   const [stories, setStories] = useState<Story[]>([]);
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isAskingAI, setIsAskingAI] = useState(false);
   const [aiResponse, setAiResponse] = useState('');
   const [loadingAI, setLoadingAI] = useState(false);
+  
+  // Trạng thái theo dõi xem truyện hiện tại đã được thưởng điểm chưa
+  const [hasAwardedCurrent, setHasAwardedCurrent] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -28,6 +35,17 @@ const StoriesView: React.FC = () => {
   const handleSelectStory = (story: Story) => {
     setSelectedStory(story);
     setIsPlaying(false);
+    setHasAwardedCurrent(false); // Reset trạng thái thưởng khi đổi truyện
+  };
+
+  const handleProgressUpdate = (progress: number) => {
+    // Nếu đạt 75% (0.75) và chưa được thưởng điểm cho truyện này
+    if (progress >= 0.75 && !hasAwardedCurrent) {
+      setHasAwardedCurrent(true);
+      if (onAwardExp) {
+        onAwardExp(10); // Thưởng 10 EXP khi bé đã nghe được 75%
+      }
+    }
   };
 
   const handleAskAI = async () => {
@@ -38,6 +56,7 @@ const StoriesView: React.FC = () => {
       const prompt = `Bé đang nghe chuyện "${selectedStory.title}". Bé muốn hỏi cô giáo về ý nghĩa của câu chuyện này. Cô hãy giải thích thật hay nhé!`;
       const response = await aiTeacherService.chat(prompt);
       setAiResponse(response);
+      if (onAwardExp) onAwardExp(5); // Hỏi AI được 5 EXP
     } catch (err) {
       setAiResponse("Cô đang bận một chút, bé hỏi lại sau nhé!");
     } finally {
@@ -58,7 +77,8 @@ const StoriesView: React.FC = () => {
           <AudioPlayer 
             isPlaying={isPlaying} 
             onTogglePlay={() => setIsPlaying(!isPlaying)} 
-            audioUrl={selectedStory.audioUrl} 
+            audioUrl={selectedStory.audioUrl}
+            onProgressUpdate={handleProgressUpdate}
           />
         }
       />

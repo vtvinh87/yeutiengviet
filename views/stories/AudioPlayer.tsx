@@ -5,9 +5,10 @@ interface AudioPlayerProps {
   isPlaying: boolean;
   onTogglePlay: () => void;
   audioUrl?: string;
+  onProgressUpdate?: (progress: number) => void;
 }
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ isPlaying, onTogglePlay, audioUrl }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ isPlaying, onTogglePlay, audioUrl, onProgressUpdate }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -29,10 +30,22 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ isPlaying, onTogglePlay, audi
     }
   }, [volume]);
 
+  // Reset progress when URL changes
+  useEffect(() => {
+    setCurrentTime(0);
+    setDuration(0);
+  }, [audioUrl]);
+
   const handleTimeUpdate = () => {
     if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
-      setDuration(audioRef.current.duration);
+      const current = audioRef.current.currentTime;
+      const total = audioRef.current.duration;
+      setCurrentTime(current);
+      setDuration(total);
+
+      if (onProgressUpdate && total > 0) {
+        onProgressUpdate(current / total);
+      }
     }
   };
 

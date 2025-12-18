@@ -5,9 +5,15 @@ import { AppView, User } from '../../types';
 interface VuaTiengVietProps {
   setView: (view: AppView, gameId?: string) => void;
   user: User;
+  onAwardExp?: (amount: number) => void;
 }
 
-const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user }) => {
+const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }) => {
+  const handleStartGame = () => {
+    if (onAwardExp) onAwardExp(50); // Giả lập thắng cuộc được 50 EXP
+    alert("Chúc mừng bé đã trở thành Vua Tiếng Việt! Bé nhận được 50 EXP.");
+  };
+
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-500">
       <div className="flex items-center gap-2 text-sm text-[#4c9a66] dark:text-[#8abf9e]">
@@ -79,7 +85,10 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user }) => {
             </div>
 
             <div className="flex flex-wrap gap-4 mt-2">
-              <button className="flex-1 sm:flex-none bg-primary hover:bg-[#0fd650] text-[#0d1b12] px-10 py-4 rounded-full font-black shadow-xl shadow-primary/20 transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-3 text-lg group">
+              <button 
+                onClick={handleStartGame}
+                className="flex-1 sm:flex-none bg-primary hover:bg-[#0fd650] text-[#0d1b12] px-10 py-4 rounded-full font-black shadow-xl shadow-primary/20 transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-3 text-lg group"
+              >
                 <span className="material-symbols-outlined group-hover:animate-bounce">play_circle</span>
                 BẮT ĐẦU CHƠI
               </button>

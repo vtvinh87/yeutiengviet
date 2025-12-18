@@ -14,7 +14,11 @@ interface ReadingExercise {
   audioBuffer?: AudioBuffer | null;
 }
 
-const ReadingView: React.FC = () => {
+interface ReadingViewProps {
+  onAwardExp?: (amount: number) => void;
+}
+
+const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
   const [currentExercise, setCurrentExercise] = useState<ReadingExercise>({
     title: "Buổi sáng trên bản",
     text: "Hôm nay trời đẹp, chim hót líu lo trên cành. Mặt trời mọc sau dãy núi, tỏa ánh nắng vàng rực rỡ xuống bản làng.",
@@ -98,6 +102,8 @@ const ReadingView: React.FC = () => {
             const result = await readingService.analyzePronunciation(base64String, currentExercise.text);
             setFeedbackData(result);
             setShowFeedback(true);
+            // Thưởng điểm sau khi hoàn thành bài đọc
+            if (onAwardExp) onAwardExp(20);
           } catch (error) {
             console.error("Analysis error:", error);
             alert("Cô không thể phân tích được giọng đọc của bé. Bé hãy thử lại nhé!");

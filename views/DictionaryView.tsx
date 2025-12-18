@@ -3,7 +3,11 @@ import React, { useState } from 'react';
 import { DictionaryEntry } from '../types';
 import { dictionaryService } from '../services/geminiService';
 
-const DictionaryView: React.FC = () => {
+interface DictionaryViewProps {
+  onAwardExp?: (amount: number) => void;
+}
+
+const DictionaryView: React.FC<DictionaryViewProps> = ({ onAwardExp }) => {
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<DictionaryEntry | null>(null);
   const [loading, setLoading] = useState(false);
@@ -16,6 +20,7 @@ const DictionaryView: React.FC = () => {
     try {
       const data = await dictionaryService.defineWord(query);
       setResult(data);
+      if (onAwardExp) onAwardExp(5); // Tra từ thành công được 5 EXP
     } catch (err) {
       console.error(err);
     } finally {
@@ -29,15 +34,12 @@ const DictionaryView: React.FC = () => {
       return;
     }
 
-    // Cancel any ongoing speech
     window.speechSynthesis.cancel();
-
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'vi-VN'; // Vietnamese
-    utterance.rate = 0.9; // Slightly slower for clarity
-    utterance.pitch = 1.1; // Friendly tone
+    utterance.lang = 'vi-VN';
+    utterance.rate = 0.9;
+    utterance.pitch = 1.1;
     
-    // Try to find a Vietnamese voice
     const voices = window.speechSynthesis.getVoices();
     const viVoice = voices.find(v => v.lang.includes('vi'));
     if (viVoice) utterance.voice = viVoice;

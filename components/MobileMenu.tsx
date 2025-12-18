@@ -35,8 +35,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
   ];
 
   return (
-    // Đã đổi md:hidden thành xl:hidden để menu hoạt động trên cả Tablet
-    <div className="fixed inset-0 z-[100] xl:hidden">
+    <div className="fixed inset-0 z-[100]">
       <div 
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-300"
         onClick={onClose}

@@ -12,6 +12,8 @@ export interface User {
   phone: string;
   avatar: string;
   role: 'user' | 'admin';
+  exp: number;
+  level: number;
 }
 
 export interface Story {

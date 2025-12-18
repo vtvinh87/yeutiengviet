@@ -3,7 +3,7 @@ import { User } from "../types";
 import { supabase } from "./supabaseClient";
 
 export const authService = {
-  async register(userData: Omit<User, 'id' | 'role'>): Promise<{ success: boolean; message: string; user?: User }> {
+  async register(userData: Omit<User, 'id' | 'role' | 'exp' | 'level'>): Promise<{ success: boolean; message: string; user?: User }> {
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userData.email,
@@ -27,7 +27,9 @@ export const authService = {
         school: userData.school || "Tiểu học Việt Mỹ",
         phone: userData.phone || "",
         avatar: userData.avatar || "https://lh3.googleusercontent.com/aida-public/AB6AXuCzmxC4VGasAnzPJKGhpgt-0YSgUzPkIn8BTStpjB2qYDSxVpltOGKD2MLsC4YcOavUFY4XXlYXL2hCGdyxrCp7E91804H30xxX3NShqiPSMCUW0M5DYsUthSdcHNuhi0z80YZNRhoeidAtqtTUGe0k9v38mJwOOjax6u6kOaz34r1FLomkhohE1KZM17M0RI84ZSB0c7mg4v_NIywm61g3hFGQ7vIO-yNs10jpjBxZyhCZkNJzLr81I9s3eU6s8hjHQZPLQBQBHA",
-        role: 'user'
+        role: 'user',
+        exp: 0,
+        level: 1
       };
 
       const { error: profileError } = await supabase
@@ -51,7 +53,6 @@ export const authService = {
 
       if (authError) throw authError;
 
-      // Buộc fetch lại profile từ DB để lấy role mới nhất
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -76,7 +77,6 @@ export const authService = {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return null;
 
-    // Fetch fresh profile data including role
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('*')
@@ -98,6 +98,33 @@ export const authService = {
       .eq('id', updatedUser.id);
     
     if (error) console.error("Update profile error:", error);
+  },
+
+  async addExperience(userId: string, amount: number): Promise<User | null> {
+    const { data: profile, error: fetchError } = await supabase
+      .from('profiles')
+      .select('exp, level')
+      .eq('id', userId)
+      .single();
+
+    if (fetchError) return null;
+
+    const currentExp = profile.exp || 0;
+    const newTotalExp = currentExp + amount;
+    const newLevel = Math.floor(newTotalExp / 100) + 1;
+
+    const { data: updatedProfile, error: updateError } = await supabase
+      .from('profiles')
+      .update({ exp: newTotalExp, level: newLevel })
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error("Error updating exp:", updateError);
+      return null;
+    }
+    return updatedProfile;
   },
 
   async getAllUsers(): Promise<User[]> {

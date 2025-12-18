@@ -9,16 +9,17 @@ interface GameDetailViewProps {
   setView: (view: AppView, gameId?: string) => void;
   user: User;
   gameId: string;
+  onAwardExp?: (amount: number) => void;
 }
 
-const GameDetailView: React.FC<GameDetailViewProps> = ({ setView, user, gameId }) => {
+const GameDetailView: React.FC<GameDetailViewProps> = ({ setView, user, gameId, onAwardExp }) => {
   switch (gameId) {
     case '1':
-      return <RungChuongVang setView={setView} user={user} />;
+      return <RungChuongVang setView={setView} user={user} onAwardExp={onAwardExp} />;
     case '2':
-      return <VuaTiengViet setView={setView} user={user} />;
+      return <VuaTiengViet setView={setView} user={user} onAwardExp={onAwardExp} />;
     case '3':
-      return <DuoiHinhBatChu setView={setView} user={user} />;
+      return <DuoiHinhBatChu setView={setView} user={user} onAwardExp={onAwardExp} />;
     default:
       return (
         <div className="p-8 text-center">

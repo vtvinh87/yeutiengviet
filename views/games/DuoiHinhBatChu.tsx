@@ -5,9 +5,12 @@ import { AppView, User } from '../../types';
 interface DuoiHinhBatChuProps {
   setView: (view: AppView, gameId?: string) => void;
   user: User;
+  // Added onAwardExp to interface to fix type mismatch in GameDetailView
+  onAwardExp?: (amount: number) => void;
 }
 
-const DuoiHinhBatChu: React.FC<DuoiHinhBatChuProps> = ({ setView, user }) => {
+// Destructured onAwardExp from props
+const DuoiHinhBatChu: React.FC<DuoiHinhBatChuProps> = ({ setView, user, onAwardExp }) => {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-500 max-w-[1000px] mx-auto w-full">
       {/* Game Header Area */}

@@ -23,6 +23,9 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, isDarkMo
   const isLiveView = activeView === 'live';
   const isFullHeightView = isStoriesView || isLiveView;
 
+  // Tính toán phần trăm EXP trong level hiện tại (giả định 100 EXP / Level)
+  const expProgress = user.exp % 100;
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -33,19 +36,11 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, isDarkMo
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const navItems = [
-    { id: 'dashboard', label: 'Trang chủ', icon: 'home' },
-    { id: 'reading', label: 'Luyện đọc', icon: 'menu_book' },
-    { id: 'stories', label: 'Kể chuyện', icon: 'headphones' },
-    { id: 'dictionary', label: 'Tra từ', icon: 'translate' },
-    { id: 'live', label: 'Trò chuyện AI', icon: 'forum' },
-    { id: 'games', label: 'Trò chơi', icon: 'sports_esports' }
-  ];
-
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden font-display">
       <header className="sticky top-0 z-50 w-full bg-white/80 dark:bg-[#102216]/90 backdrop-blur-md border-b border-[#e7f3eb] dark:border-[#2a4535]">
         <div className="flex items-center justify-between px-4 py-3 md:px-10 lg:px-20 max-w-7xl mx-auto w-full">
+          {/* Logo Section */}
           <div className="flex items-center gap-4 cursor-pointer" onClick={() => setView('dashboard')}>
             <div className="flex items-center justify-center size-10 rounded-full bg-primary/20 text-primary">
               <span className="material-symbols-outlined filled text-2xl">school</span>
@@ -55,28 +50,17 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, isDarkMo
             </h1>
           </div>
 
-          <nav className="hidden xl:flex items-center gap-6 lg:gap-8">
-            {navItems.map((nav) => (
-              <button
-                key={nav.id}
-                onClick={() => setView(nav.id as AppView)}
-                className={`text-sm font-bold transition-all flex items-center gap-2 px-3 py-1.5 rounded-full ${
-                  activeView === nav.id 
-                    ? 'text-primary bg-primary/5' 
-                    : 'text-text-main dark:text-gray-200 hover:text-primary hover:bg-gray-50 dark:hover:bg-white/5'
-                }`}
-              >
-                <span className={`material-symbols-outlined text-[20px] ${activeView === nav.id ? 'filled' : ''}`}>{nav.icon}</span>
-                {nav.label}
-              </button>
-            ))}
-            
-            <div className="h-6 w-px bg-gray-200 dark:bg-white/10 mx-2"></div>
-
-            <button onClick={toggleDarkMode} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+          {/* Right Section Actions */}
+          <div className="flex items-center gap-2 md:gap-4">
+            <button 
+              onClick={toggleDarkMode} 
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+              title={isDarkMode ? 'Chế độ sáng' : 'Chế độ tối'}
+            >
               <span className="material-symbols-outlined">{isDarkMode ? 'light_mode' : 'dark_mode'}</span>
             </button>
 
+            {/* Profile & EXP Display */}
             <div className="relative" ref={menuRef}>
               <div 
                 className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 p-1.5 pr-3 rounded-full transition-colors border border-transparent active:border-primary/20"
@@ -86,9 +70,17 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, isDarkMo
                   className="h-9 w-9 rounded-full bg-center bg-cover border-2 border-primary shadow-sm" 
                   style={{backgroundImage: `url("${user.avatar}")`}}
                 ></div>
-                <div className="hidden lg:flex flex-col items-start leading-tight">
-                  <span className="text-sm font-black truncate max-w-[100px]">{user.name}</span>
-                  <span className="text-[10px] text-primary font-bold uppercase tracking-wider">{user.grade}</span>
+                <div className="hidden sm:flex flex-col items-start leading-tight min-w-[120px]">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-black truncate max-w-[100px]">{user.name}</span>
+                    <span className="bg-primary/20 text-primary text-[10px] px-1.5 py-0.5 rounded-md font-black">Lv.{user.level || 1}</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-gray-100 dark:bg-white/10 rounded-full mt-1 overflow-hidden">
+                    <div 
+                      className="h-full bg-primary transition-all duration-500" 
+                      style={{ width: `${expProgress}%` }}
+                    ></div>
+                  </div>
                 </div>
                 <span className={`material-symbols-outlined text-gray-400 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`}>expand_more</span>
               </div>
@@ -98,6 +90,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, isDarkMo
                   <div className="px-5 py-4 bg-primary/5 dark:bg-primary/10 border-b border-gray-100 dark:border-white/5">
                     <p className="text-xs font-black text-primary uppercase tracking-widest mb-1">Tài khoản</p>
                     <p className="text-sm font-bold truncate">{user.email || user.username}</p>
+                    <p className="text-[10px] text-gray-500 mt-2 font-bold">{user.exp} EXP - {100 - expProgress} EXP nữa để lên cấp!</p>
                   </div>
                   <div className="py-2">
                     <button 
@@ -136,11 +129,15 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, isDarkMo
                 </div>
               )}
             </div>
-          </nav>
 
-          <button className="xl:hidden text-text-main dark:text-white p-2" onClick={() => setIsMobileMenuOpen(true)}>
-            <span className="material-symbols-outlined">menu</span>
-          </button>
+            {/* Always visible Hamburger Menu */}
+            <button 
+              className="flex items-center justify-center p-2 text-text-main dark:text-white rounded-full hover:bg-gray-100 dark:hover:bg-white/5 transition-colors" 
+              onClick={() => setIsMobileMenuOpen(true)}
+            >
+              <span className="material-symbols-outlined text-3xl">menu</span>
+            </button>
+          </div>
         </div>
       </header>
 

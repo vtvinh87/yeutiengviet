@@ -5,9 +5,12 @@ import { AppView, User } from '../../types';
 interface RungChuongVangProps {
   setView: (view: AppView, gameId?: string) => void;
   user: User;
+  // Added onAwardExp to interface to fix type mismatch in GameDetailView
+  onAwardExp?: (amount: number) => void;
 }
 
-const RungChuongVang: React.FC<RungChuongVangProps> = ({ setView, user }) => {
+// Destructured onAwardExp from props
+const RungChuongVang: React.FC<RungChuongVangProps> = ({ setView, user, onAwardExp }) => {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-500">
       <div className="flex items-center gap-2 text-sm text-[#4c9a66] dark:text-[#8abf9e]">

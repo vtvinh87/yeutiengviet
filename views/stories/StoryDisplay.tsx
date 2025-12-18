@@ -51,7 +51,8 @@ const StoryDisplay: React.FC<StoryDisplayProps> = ({ story, onAskAI }) => {
             </div>
           </div>
 
-          <div className="space-y-8 text-xl md:text-2xl lg:text-3xl leading-relaxed text-gray-700 dark:text-gray-300 font-medium pb-20">
+          {/* Added pb-32 on mobile to avoid fixed player overlap, lg:pb-20 for desktop */}
+          <div className="space-y-8 text-xl md:text-2xl lg:text-3xl leading-relaxed text-gray-700 dark:text-gray-300 font-medium pb-32 lg:pb-20">
             {story.content.split('\n\n').map((para, i) => (
               <div 
                 key={i} 
