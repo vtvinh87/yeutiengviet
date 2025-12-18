@@ -1,10 +1,12 @@
 
 import { Type } from "@google/genai";
-import { getAiClient } from "./geminiClient";
+// Fix: Corrected import from 'getAiClient' to 'getAiInstance' as exported by geminiClient.ts
+import { getAiInstance } from "./geminiClient";
 
 export const readingService = {
   async generateNextExercise(): Promise<{ title: string; text: string; imagePrompt: string }> {
-    const aiClient = getAiClient();
+    // Fix: Updated usage from 'getAiClient' to 'getAiInstance'
+    const aiClient = getAiInstance();
     if (!aiClient) {
       return {
         title: "Bài học dự phòng",
@@ -42,7 +44,8 @@ export const readingService = {
   },
 
   async analyzePronunciation(audioBase64: string, targetText: string): Promise<any> {
-    const aiClient = getAiClient();
+    // Fix: Updated usage from 'getAiClient' to 'getAiInstance'
+    const aiClient = getAiInstance();
     
     // Fallback nếu không có API Key
     if (!aiClient) {

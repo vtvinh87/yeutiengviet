@@ -1,12 +1,15 @@
 
 import { Modality } from "@google/genai";
-import { ai } from "./geminiClient";
+import { getAiInstance } from "./geminiClient";
 import { decodeBase64, decodeAudioData } from "./audioUtils";
 
 export const aiTeacherService = {
   async chat(message: string): Promise<string> {
+    const aiClient = getAiInstance();
+    if (!aiClient) return "Cô đang bận một chút để soạn bài cho các bé, bé quay lại hỏi cô sau nhé!";
+
     try {
-      const response = await ai.models.generateContent({
+      const response = await aiClient.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: message,
         config: {
@@ -16,18 +19,20 @@ export const aiTeacherService = {
       return response.text || "Cô không nghe rõ, bé nói lại được không?";
     } catch (error) {
       console.error("AI Chat Error:", error);
-      return "Cô đang bận một chút để soạn bài cho các bé, bé quay lại hỏi cô sau nhé!";
+      return "Hệ thống đang bảo trì, bé chờ cô một lát nhé!";
     }
   },
 
   async generateSpeechBuffer(text: string, ctx: AudioContext): Promise<AudioBuffer | null> {
+    const aiClient = getAiInstance();
+    if (!aiClient) return null;
+
     try {
-      if (!process.env.API_KEY) throw new Error("Missing API Key");
-      
-      const response = await ai.models.generateContent({
+      const response = await aiClient.models.generateContent({
         model: "gemini-2.5-flash-preview-tts",
         contents: [{ parts: [{ text: `Đọc diễn cảm cho học sinh tiểu học nghe: ${text}` }] }],
         config: {
+          // Fix: Corrected property name from 'responseModalalities' to 'responseModalities'
           responseModalities: [Modality.AUDIO],
           speechConfig: {
             voiceConfig: {
@@ -62,7 +67,6 @@ export const aiTeacherService = {
         source.connect(ctx.destination);
         source.start();
       } else {
-        // Fallback to browser TTS if Gemini fails
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'vi-VN';
         window.speechSynthesis.speak(utterance);

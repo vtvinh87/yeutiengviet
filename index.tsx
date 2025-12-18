@@ -16,6 +16,11 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   // Initialize state as a class property instead of in constructor to resolve property detection issues
   public state: ErrorBoundaryState = { hasError: false };
 
+  // Explicitly defining the constructor can help TypeScript resolve inherited properties like 'this.props'
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+  }
+
   static getDerivedStateFromError() {
     return { hasError: true };
   }
