@@ -1,26 +1,33 @@
+
 import { Modality } from "@google/genai";
 import { ai } from "./geminiClient";
 import { decodeBase64, decodeAudioData } from "./audioUtils";
 
 export const aiTeacherService = {
   async chat(message: string): Promise<string> {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: message,
-      config: {
-        systemInstruction: "Bạn là một cô giáo dạy Tiếng Việt hiền hậu và thông minh cho học sinh tiểu học. Hãy trả lời các bé thật dễ thương, ngắn gọn và khích lệ."
-      }
-    });
-    return response.text || "Cô không nghe rõ, bé nói lại được không?";
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: message,
+        config: {
+          systemInstruction: "Bạn là một cô giáo dạy Tiếng Việt hiền hậu và thông minh cho học sinh tiểu học. Hãy trả lời các bé thật dễ thương, ngắn gọn và khích lệ."
+        }
+      });
+      return response.text || "Cô không nghe rõ, bé nói lại được không?";
+    } catch (error) {
+      console.error("AI Chat Error:", error);
+      return "Cô đang bận một chút để soạn bài cho các bé, bé quay lại hỏi cô sau nhé!";
+    }
   },
 
   async generateSpeechBuffer(text: string, ctx: AudioContext): Promise<AudioBuffer | null> {
     try {
+      if (!process.env.API_KEY) throw new Error("Missing API Key");
+      
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-preview-tts",
         contents: [{ parts: [{ text: `Đọc diễn cảm cho học sinh tiểu học nghe: ${text}` }] }],
         config: {
-          // Fix typo: responseModalalities -> responseModalities
           responseModalities: [Modality.AUDIO],
           speechConfig: {
             voiceConfig: {
@@ -46,13 +53,22 @@ export const aiTeacherService = {
   },
 
   async speak(text: string): Promise<void> {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-    const buffer = await this.generateSpeechBuffer(text, ctx);
-    if (buffer) {
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(ctx.destination);
-      source.start();
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+      const buffer = await this.generateSpeechBuffer(text, ctx);
+      if (buffer) {
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start();
+      } else {
+        // Fallback to browser TTS if Gemini fails
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'vi-VN';
+        window.speechSynthesis.speak(utterance);
+      }
+    } catch (e) {
+      console.error("Speak failed", e);
     }
   }
 };
