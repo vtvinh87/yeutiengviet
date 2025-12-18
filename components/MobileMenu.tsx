@@ -30,7 +30,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
     { id: 'stories', label: 'Kể chuyện', icon: 'headphones' },
     { id: 'games', label: 'Trò chơi', icon: 'sports_esports' },
     { id: 'reading', label: 'Luyện đọc', icon: 'menu_book' },
-    { id: 'dictionary', label: 'Tra từ điển', icon: 'search' },
+    { id: 'dictionary', label: 'Giải nghĩa từ', icon: 'translate' },
     { id: 'profile', label: 'Hồ sơ cá nhân', icon: 'account_circle' },
   ];
 
@@ -42,7 +42,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({
         onClick={onClose}
       />
       
-      <div className="absolute right-0 top-0 h-full w-[80%] max-w-sm bg-white dark:bg-surface-dark shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col">
+      <div className="absolute right-0 top-0 h-full w-[80%] max-sm:w-[85%] max-w-sm bg-white dark:bg-surface-dark shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-white/5">
           <div className="flex items-center gap-2">
             <div className="size-8 rounded-full bg-primary/20 text-primary flex items-center justify-center">

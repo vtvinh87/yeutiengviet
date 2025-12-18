@@ -10,7 +10,12 @@ const AuthView: React.FC<{ onLogin: (user: User) => void }> = ({ onLogin }) => {
   const [heroImage, setHeroImage] = useState('');
 
   useEffect(() => {
-    setHeroImage(dataService.getSystemImage(IMAGE_KEYS.AUTH_HERO, 'https://lh3.googleusercontent.com/aida-public/AB6AXuAs8ES2d4qfX1CPkR3tdK1bo394PZgw34Zgj19ewQ7rGS1yPGYaO2dL7wtIHNEA-kSIE8gjz-Dvqey0eYkrZUNA0WYbwu3iAe1lMExYtTA8cGSlW7t3tIBSF4uhgp4Fj6P65E3rCNrr3Br5wabJA5yD8iKVHIUnmbDcjgcwohxd01hqhAfHkGbpsfW7rVneezm8-9aYVsCYSm5h7tHyi8FyK2YmKct1SvWyzEo9593AJTmidvHNDKBkExupDDxMZwZ6NtUUjQc45g'));
+    // Fix: Wait for getSystemImage promise to resolve before updating state
+    const loadHero = async () => {
+      const url = await dataService.getSystemImage(IMAGE_KEYS.AUTH_HERO, 'https://lh3.googleusercontent.com/aida-public/AB6AXuAs8ES2d4qfX1CPkR3tdK1bo394PZgw34Zgj19ewQ7rGS1yPGYaO2dL7wtIHNEA-kSIE8gjz-Dvqey0eYkrZUNA0WYbwu3iAe1lMExYtTA8cGSlW7t3tIBSF4uhgp4Fj6P65E3rCNrr3Br5wabJA5yD8iKVHIUnmbDcjgcwohxd01hqhAfHkGbpsfW7rVneezm8-9aYVsCYSm5h7tHyi8FyK2YmKct1SvWyzEo9593AJTmidvHNDKBkExupDDxMZwZ6NtUUjQc45g');
+      setHeroImage(url);
+    };
+    loadHero();
   }, []);
 
   return (

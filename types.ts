@@ -1,5 +1,5 @@
 
-export type AppView = 'auth' | 'dashboard' | 'reading' | 'stories' | 'dictionary' | 'games' | 'profile' | 'game-detail' | 'admin';
+export type AppView = 'auth' | 'dashboard' | 'reading' | 'stories' | 'dictionary' | 'games' | 'profile' | 'game-detail' | 'admin' | 'live';
 
 export interface User {
   id: string;
@@ -11,6 +11,7 @@ export interface User {
   school: string;
   phone: string;
   avatar: string;
+  role: 'user' | 'admin';
 }
 
 export interface Story {

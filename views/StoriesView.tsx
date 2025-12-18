@@ -18,9 +18,13 @@ const StoriesView: React.FC = () => {
   const [loadingAI, setLoadingAI] = useState(false);
 
   useEffect(() => {
-    const loaded = dataService.getStories();
-    setStories(loaded);
-    if (loaded.length > 0) setSelectedStory(loaded[0]);
+    // Fix: Wait for getStories promise to resolve before updating state
+    const loadData = async () => {
+      const loaded = await dataService.getStories();
+      setStories(loaded);
+      if (loaded.length > 0) setSelectedStory(loaded[0]);
+    };
+    loadData();
   }, []);
 
   const handleAskAI = async () => {

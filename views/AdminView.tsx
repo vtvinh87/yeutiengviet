@@ -8,60 +8,85 @@ import StoryTable from './admin/StoryTable';
 import ImageTable from './admin/ImageTable';
 import AdminModal from './admin/AdminModal';
 
-type AdminTab = 'users' | 'stories' | 'images';
+interface AdminViewProps {
+  user: User;
+}
 
-const AdminView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<AdminTab>('users');
+const AdminView: React.FC<AdminViewProps> = ({ user }) => {
+  const [activeTab, setActiveTab] = useState<'users' | 'stories' | 'images'>('users');
   const [users, setUsers] = useState<User[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
   const [images, setImages] = useState<AdminImage[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const [editingItem, setEditingItem] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Security check
+  if (user.role !== 'admin') {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+        <span className="material-symbols-outlined text-6xl text-red-500">lock</span>
+        <h2 className="text-2xl font-black">Truy cập bị từ chối</h2>
+        <p className="text-gray-500">Chỉ giáo viên quản trị mới có quyền truy cập khu vực này.</p>
+      </div>
+    );
+  }
+
   useEffect(() => {
     refreshData();
-  }, []);
+  }, [activeTab]);
 
-  const refreshData = () => {
-    setUsers(authService.getUsers());
-    setStories(dataService.getStories());
-    setImages(dataService.getImages());
-  };
-
-  const handleSave = (data: any) => {
-    if (activeTab === 'users') {
-      authService.saveUser(data as User);
-    } else if (activeTab === 'stories') {
-      const current = dataService.getStories();
-      const index = current.findIndex(s => s.id === data.id);
-      if (index > -1) current[index] = data;
-      else current.push({ ...data, id: Date.now().toString() });
-      dataService.saveStories(current);
-    } else if (activeTab === 'images') {
-      const current = dataService.getImages();
-      const index = current.findIndex(i => i.id === data.id);
-      if (index > -1) current[index] = data;
-      else current.push({ ...data, id: Date.now().toString() });
-      dataService.saveImages(current);
+  const refreshData = async () => {
+    setLoading(true);
+    try {
+      if (activeTab === 'users') {
+        const u = await authService.getAllUsers();
+        setUsers(u);
+      } else if (activeTab === 'stories') {
+        const s = await dataService.getStories();
+        setStories(s);
+      } else if (activeTab === 'images') {
+        const i = await dataService.getImages();
+        setImages(i);
+      }
+    } finally {
+      setLoading(false);
     }
-    refreshData();
-    setIsModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
+  const handleSave = async (data: any) => {
+    setLoading(true);
+    try {
+      if (activeTab === 'users') {
+        await authService.updateProfile(data as User);
+      } else if (activeTab === 'stories') {
+        await dataService.saveStory(data as Story);
+      } else if (activeTab === 'images') {
+        await dataService.saveImage(data as AdminImage);
+      }
+      await refreshData();
+      setIsModalOpen(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
     if (!confirm("Bạn có chắc chắn muốn xóa?")) return;
-    if (activeTab === 'users') {
-      const current = authService.getUsers().filter(u => u.id !== id);
-      localStorage.setItem("vn_companion_users", JSON.stringify(current));
-    } else if (activeTab === 'stories') {
-      const current = dataService.getStories().filter(s => s.id !== id);
-      dataService.saveStories(current);
-    } else if (activeTab === 'images') {
-      const current = dataService.getImages().filter(i => i.id !== id);
-      dataService.saveImages(current);
+    setLoading(true);
+    try {
+      if (activeTab === 'users') {
+        await authService.deleteUser(id);
+      } else if (activeTab === 'stories') {
+        await dataService.deleteStory(id);
+      } else if (activeTab === 'images') {
+        await dataService.deleteImage(id);
+      }
+      await refreshData();
+    } finally {
+      setLoading(false);
     }
-    refreshData();
   };
 
   const openModal = (item: any = null) => {
@@ -74,7 +99,7 @@ const AdminView: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-black">Bảng quản trị</h2>
-          <p className="text-gray-500">Quản lý nội dung và người dùng hệ thống.</p>
+          <p className="text-gray-500">Quản lý nội dung và người dùng trên hệ thống Supabase.</p>
         </div>
         <button 
           onClick={() => openModal()}
@@ -93,7 +118,7 @@ const AdminView: React.FC = () => {
         ].map(tab => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as AdminTab)}
+            onClick={() => setActiveTab(tab.id as any)}
             className={`flex items-center gap-2 px-6 py-3 text-sm font-bold transition-all border-b-2 ${
               activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
@@ -104,7 +129,12 @@ const AdminView: React.FC = () => {
         ))}
       </div>
 
-      <div className="bg-white dark:bg-surface-dark rounded-2xl shadow-soft overflow-hidden border border-gray-100 dark:border-white/10">
+      <div className="bg-white dark:bg-surface-dark rounded-2xl shadow-soft overflow-hidden border border-gray-100 dark:border-white/10 min-h-[300px] relative">
+        {loading && (
+          <div className="absolute inset-0 bg-white/50 dark:bg-black/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
+             <div className="size-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+          </div>
+        )}
         {activeTab === 'users' && <UserTable users={users} onEdit={openModal} onDelete={handleDelete} />}
         {activeTab === 'stories' && <StoryTable stories={stories} onEdit={openModal} onDelete={handleDelete} />}
         {activeTab === 'images' && <ImageTable images={images} onEdit={openModal} onDelete={handleDelete} />}

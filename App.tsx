@@ -11,6 +11,7 @@ import StoriesView from './views/StoriesView';
 import GamesView from './views/GamesView';
 import GameDetailView from './views/GameDetailView';
 import AdminView from './views/AdminView';
+import LiveView from './views/LiveView';
 import { authService } from './services/authService';
 
 const App: React.FC = () => {
@@ -18,6 +19,7 @@ const App: React.FC = () => {
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [user, setUser] = useState<User | null>(null);
+  const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -29,11 +31,20 @@ const App: React.FC = () => {
   }, [isDarkMode]);
 
   useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    if (currentUser) {
-      setUser(currentUser);
-      setCurrentView('dashboard');
-    }
+    const initSession = async () => {
+      try {
+        const currentUser = await authService.getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
+          setCurrentView('dashboard');
+        }
+      } catch (err) {
+        console.error("Session restoration failed", err);
+      } finally {
+        setInitializing(false);
+      }
+    };
+    initSession();
   }, []);
 
   const handleLogin = (loggedInUser: User) => {
@@ -41,14 +52,14 @@ const App: React.FC = () => {
     setCurrentView('dashboard');
   };
 
-  const handleLogout = () => {
-    authService.logout();
+  const handleLogout = async () => {
+    await authService.logout();
     setUser(null);
     setCurrentView('auth');
   };
 
-  const handleUpdateProfile = (updatedUser: User) => {
-    authService.updateProfile(updatedUser);
+  const handleUpdateProfile = async (updatedUser: User) => {
+    await authService.updateProfile(updatedUser);
     setUser(updatedUser);
   };
 
@@ -73,14 +84,25 @@ const App: React.FC = () => {
         return <StoriesView />;
       case 'games':
         return <GamesView setView={handleSetView} />;
+      case 'live':
+        return <LiveView />;
       case 'game-detail':
         return <GameDetailView setView={handleSetView} user={user} gameId={selectedGameId || '1'} />;
       case 'admin':
-        return <AdminView />;
+        return <AdminView user={user} />;
       default:
         return <DashboardView setView={setCurrentView} user={user} />;
     }
   };
+
+  if (initializing) {
+    return (
+      <div className="min-h-screen bg-background-light dark:bg-background-dark flex flex-col items-center justify-center gap-6">
+        <div className="size-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+        <p className="text-primary font-bold animate-pulse">Đang tải ứng dụng...</p>
+      </div>
+    );
+  }
 
   if (currentView === 'auth') {
     return <AuthView onLogin={handleLogin} />;

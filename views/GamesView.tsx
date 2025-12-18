@@ -52,7 +52,12 @@ const GamesView: React.FC<GamesViewProps> = ({ setView }) => {
   const [heroImage, setHeroImage] = useState('');
 
   useEffect(() => {
-    setHeroImage(dataService.getSystemImage(IMAGE_KEYS.GAMES_HERO, ''));
+    // Fix: Wait for getSystemImage promise to resolve before updating state
+    const loadHero = async () => {
+      const url = await dataService.getSystemImage(IMAGE_KEYS.GAMES_HERO, '');
+      setHeroImage(url);
+    };
+    loadHero();
   }, []);
 
   return (

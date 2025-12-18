@@ -1,13 +1,15 @@
 
-import { Type } from "@google/genai";
-import { ai } from "./geminiClient";
+import { GoogleGenAI, Type } from "@google/genai";
 import { DictionaryEntry } from "../types";
 
 export const dictionaryService = {
   async defineWord(word: string): Promise<DictionaryEntry> {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
+    // 1. Get structured definition from Gemini 3 Flash
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Giải nghĩa từ "${word}" cho trẻ em tiểu học.`,
+      contents: `Giải nghĩa từ "${word}" cho trẻ em tiểu học một cách sinh động, dễ hiểu.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -16,11 +18,11 @@ export const dictionaryService = {
             word: { type: Type.STRING },
             type: { type: Type.STRING, description: "Loại từ (Danh từ, Động từ, v.v.)" },
             category: { type: Type.STRING },
-            phonetic: { type: Type.STRING, description: "Phiên âm tiếng Việt dễ hiểu (ví dụ: vũ trụ -> vũ trụ hoặc v-ũ-tr-ụ)" },
+            phonetic: { type: Type.STRING, description: "Phiên âm tiếng Việt dễ hiểu" },
             definition: { type: Type.STRING },
             examples: { type: Type.ARRAY, items: { type: Type.STRING } },
             synonyms: { type: Type.ARRAY, items: { type: Type.STRING } },
-            imagePrompt: { type: Type.STRING, description: "Dùng để tạo hình ảnh minh họa cho từ này" }
+            imagePrompt: { type: Type.STRING, description: "Mô tả hình ảnh minh họa bằng tiếng Anh (ví dụ: 'a cute robot in space')" }
           },
           required: ["word", "type", "category", "phonetic", "definition", "examples", "synonyms", "imagePrompt"]
         }
@@ -28,10 +30,35 @@ export const dictionaryService = {
     });
 
     const data = JSON.parse(response.text || '{}');
+
+    // 2. Generate a kid-friendly illustration using Gemini 2.5 Flash Image
+    let finalImageUrl = `https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=600&auto=format&fit=crop`;
+    
+    try {
+      const imageResult = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image',
+        contents: {
+          parts: [{ text: `A kid-friendly, colorful, high-quality digital illustration of: ${data.imagePrompt}. Storybook art style, clean lines, vibrant colors, educational vibe.` }]
+        },
+        config: {
+          imageConfig: {
+            aspectRatio: "1:1"
+          }
+        }
+      });
+
+      for (const part of imageResult.candidates[0].content.parts) {
+        if (part.inlineData) {
+          finalImageUrl = `data:image/png;base64,${part.inlineData.data}`;
+        }
+      }
+    } catch (err) {
+      console.warn("Could not generate AI image for dictionary, using fallback.", err);
+    }
+
     return {
       ...data,
-      // Using a slightly better placeholder for images or actual search result
-      image: `https://images.unsplash.com/photo-1464802686167-b939a6910659?q=80&w=600&auto=format&fit=crop` 
+      image: finalImageUrl
     };
   }
 };

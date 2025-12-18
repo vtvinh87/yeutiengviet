@@ -14,28 +14,34 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onRegister, onSwitchToLogin
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
     
-    const result = authService.register({
-      name,
-      username,
-      email,
-      password,
-      grade: 'Lớp 2A',
-      school: 'Tiểu học Việt Mỹ',
-      phone: '',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCzmxC4VGasAnzPJKGhpgt-0YSgUzPkIn8BTStpjB2qYDSxVpltOGKD2MLsC4YcOavUFY4XXlYXL2hCGdyxrCp7E91804H30xxX3NShqiPSMCUW0M5DYsUthSdcHNuhi0z80YZNRhoeidAtqtTUGe0k9v38mJwOOjax6u6kOaz34r1FLomkhohE1KZM17M0RI84ZSB0c7mg4v_NIywm61g3hFGQ7vIO-yNs10jpjBxZyhCZkNJzLr81I9s3eU6s8hjHQZPLQBQBHA'
-    });
+    try {
+      const result = await authService.register({
+        name,
+        username,
+        email,
+        password,
+        grade: 'Lớp 2A',
+        school: 'Tiểu học Việt Mỹ',
+        phone: '',
+        avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCzmxC4VGasAnzPJKGhpgt-0YSgUzPkIn8BTStpjB2qYDSxVpltOGKD2MLsC4YcOavUFY4XXlYXL2hCGdyxrCp7E91804H30xxX3NShqiPSMCUW0M5DYsUthSdcHNuhi0z80YZNRhoeidAtqtTUGe0k9v38mJwOOjax6u6kOaz34r1FLomkhohE1KZM17M0RI84ZSB0c7mg4v_NIywm61g3hFGQ7vIO-yNs10jpjBxZyhCZkNJzLr81I9s3eU6s8hjHQZPLQBQBHA'
+      });
 
-    if (result.success && result.user) {
-      // Log them in immediately
-      authService.login(username, password);
-      onRegister(result.user);
-    } else {
-      setError(result.message);
+      if (result.success && result.user) {
+        onRegister(result.user);
+      } else {
+        setError(result.message);
+      }
+    } catch (err) {
+      setError("Lỗi kết nối máy chủ.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -55,9 +61,10 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onRegister, onSwitchToLogin
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full h-14 pl-12 pr-4 bg-gray-50 dark:bg-surface-dark border-2 border-[#cfe7d7] dark:border-[#2a4533] rounded-full focus:ring-primary focus:border-primary transition-all text-sm md:text-base"
+              className="w-full h-14 pl-12 pr-4 bg-gray-50 dark:bg-surface-dark border-2 border-[#cfe7d7] dark:border-[#2a4533] rounded-full focus:ring-primary focus:border-primary transition-all text-sm md:text-base disabled:opacity-50"
               placeholder="Nhập tên bé ví dụ: Bé An"
               type="text"
+              disabled={loading}
             />
           </div>
         </div>
@@ -70,9 +77,10 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onRegister, onSwitchToLogin
               required
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full h-14 pl-12 pr-4 bg-gray-50 dark:bg-surface-dark border-2 border-[#cfe7d7] dark:border-[#2a4533] rounded-full focus:ring-primary focus:border-primary transition-all text-sm md:text-base"
+              className="w-full h-14 pl-12 pr-4 bg-gray-50 dark:bg-surface-dark border-2 border-[#cfe7d7] dark:border-[#2a4533] rounded-full focus:ring-primary focus:border-primary transition-all text-sm md:text-base disabled:opacity-50"
               placeholder="Nhập tên đăng nhập"
               type="text"
+              disabled={loading}
             />
           </div>
         </div>
@@ -85,9 +93,10 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onRegister, onSwitchToLogin
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full h-14 pl-12 pr-4 bg-gray-50 dark:bg-surface-dark border-2 border-[#cfe7d7] dark:border-[#2a4533] rounded-full focus:ring-primary focus:border-primary transition-all text-sm md:text-base"
+              className="w-full h-14 pl-12 pr-4 bg-gray-50 dark:bg-surface-dark border-2 border-[#cfe7d7] dark:border-[#2a4533] rounded-full focus:ring-primary focus:border-primary transition-all text-sm md:text-base disabled:opacity-50"
               placeholder="Nhập email phụ huynh"
               type="email"
+              disabled={loading}
             />
           </div>
         </div>
@@ -100,33 +109,35 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onRegister, onSwitchToLogin
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full h-14 pl-12 pr-12 bg-gray-50 dark:bg-surface-dark border-2 border-[#cfe7d7] dark:border-[#2a4533] rounded-full focus:ring-primary focus:border-primary transition-all text-sm md:text-base"
-              placeholder="Nhập mật khẩu"
+              className="w-full h-14 pl-12 pr-12 bg-gray-50 dark:bg-surface-dark border-2 border-[#cfe7d7] dark:border-[#2a4533] rounded-full focus:ring-primary focus:border-primary transition-all text-sm md:text-base disabled:opacity-50"
+              placeholder="Nhập mật khẩu (ít nhất 6 ký tự)"
               type="password"
+              minLength={6}
+              disabled={loading}
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-2 px-2">
-          <input type="checkbox" id="terms" className="rounded text-primary focus:ring-primary border-gray-300" required />
-          <label htmlFor="terms" className="text-xs text-gray-500">
-            Tôi đồng ý với <button type="button" className="font-bold text-primary hover:underline">Điều khoản</button> và <button type="button" className="font-bold text-primary hover:underline">Chính sách bảo mật</button>.
-          </label>
-        </div>
-
         <button 
           type="submit"
-          className="mt-2 w-full h-14 bg-primary hover:bg-primary-hover text-text-main text-lg font-bold rounded-full shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2 active:scale-95"
+          disabled={loading}
+          className="mt-2 w-full h-14 bg-primary hover:bg-primary-hover text-text-main text-lg font-bold rounded-full shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
         >
-          <span>Tạo tài khoản</span>
-          <span className="material-symbols-outlined font-bold">arrow_forward</span>
+          {loading ? (
+            <div className="size-6 border-2 border-text-main/30 border-t-text-main rounded-full animate-spin"></div>
+          ) : (
+            <>
+              <span>Tạo tài khoản</span>
+              <span className="material-symbols-outlined font-bold">arrow_forward</span>
+            </>
+          )}
         </button>
       </form>
 
       <div className="text-center">
         <p className="text-sm text-gray-500">
           Đã có tài khoản?{' '}
-          <button onClick={onSwitchToLogin} className="font-bold text-primary hover:underline">Đăng nhập</button>
+          <button onClick={onSwitchToLogin} className="font-bold text-primary hover:underline" disabled={loading}>Đăng nhập</button>
         </p>
       </div>
     </div>

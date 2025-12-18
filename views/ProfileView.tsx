@@ -59,8 +59,10 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdate }) => {
                 <span className="text-sm font-bold">{user.username}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Huy hiệu</span>
-                <span className="text-sm font-bold text-orange-500">Người khai phá</span>
+                <span className="text-sm text-gray-500">Quyền hạn</span>
+                <span className={`text-xs font-black uppercase px-2 py-1 rounded ${user.role === 'admin' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                  {user.role}
+                </span>
               </div>
             </div>
           </div>

@@ -1,63 +1,111 @@
 
 import { User } from "../types";
-
-const USERS_KEY = "vn_companion_users";
-const SESSION_KEY = "vn_companion_session";
+import { supabase } from "./supabaseClient";
 
 export const authService = {
-  getUsers: (): User[] => {
-    const usersJson = localStorage.getItem(USERS_KEY);
-    return usersJson ? JSON.parse(usersJson) : [];
-  },
+  async register(userData: Omit<User, 'id' | 'role'>): Promise<{ success: boolean; message: string; user?: User }> {
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password!,
+        options: {
+          data: {
+            full_name: userData.name,
+          }
+        }
+      });
 
-  saveUser: (user: User) => {
-    const users = authService.getUsers();
-    const index = users.findIndex(u => u.id === user.id);
-    if (index > -1) {
-      users[index] = user;
-    } else {
-      users.push(user);
+      if (authError) throw authError;
+      if (!authData.user) throw new Error("Không thể tạo tài khoản xác thực.");
+
+      const newUser: User = {
+        id: authData.user.id,
+        name: userData.name,
+        username: userData.username,
+        email: userData.email,
+        grade: userData.grade || "Lớp 2A",
+        school: userData.school || "Tiểu học Việt Mỹ",
+        phone: userData.phone || "",
+        avatar: userData.avatar || "https://lh3.googleusercontent.com/aida-public/AB6AXuCzmxC4VGasAnzPJKGhpgt-0YSgUzPkIn8BTStpjB2qYDSxVpltOGKD2MLsC4YcOavUFY4XXlYXL2hCGdyxrCp7E91804H30xxX3NShqiPSMCUW0M5DYsUthSdcHNuhi0z80YZNRhoeidAtqtTUGe0k9v38mJwOOjax6u6kOaz34r1FLomkhohE1KZM17M0RI84ZSB0c7mg4v_NIywm61g3hFGQ7vIO-yNs10jpjBxZyhCZkNJzLr81I9s3eU6s8hjHQZPLQBQBHA",
+        role: 'user'
+      };
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([newUser]);
+
+      if (profileError) console.error("Profile creation error:", profileError);
+
+      return { success: true, message: "Đăng ký thành công!", user: newUser };
+    } catch (error: any) {
+      return { success: false, message: error.message || "Lỗi đăng ký hệ thống." };
     }
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
   },
 
-  register: (userData: Omit<User, 'id'>): { success: boolean; message: string; user?: User } => {
-    const users = authService.getUsers();
-    if (users.find(u => u.username === userData.username || u.email === userData.email)) {
-      return { success: false, message: "Tên đăng nhập hoặc Email đã tồn tại!" };
+  async login(usernameOrEmail: string, password: string): Promise<{ success: boolean; message: string; user?: User }> {
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: usernameOrEmail,
+        password: password,
+      });
+
+      if (authError) throw authError;
+
+      // Buộc fetch lại profile từ DB để lấy role mới nhất
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authData.user.id)
+        .single();
+
+      if (profileError || !profile) {
+        throw new Error("Không tìm thấy hồ sơ người dùng trong hệ thống.");
+      }
+
+      return { success: true, message: "Đăng nhập thành công!", user: profile };
+    } catch (error: any) {
+      return { success: false, message: error.message || "Thông tin đăng nhập không chính xác." };
     }
-    const newUser: User = {
-      ...userData,
-      id: crypto.randomUUID(),
-      avatar: userData.avatar || "https://lh3.googleusercontent.com/aida-public/AB6AXuCzmxC4VGasAnzPJKGhpgt-0YSgUzPkIn8BTStpjB2qYDSxVpltOGKD2MLsC4YcOavUFY4XXlYXL2hCGdyxrCp7E91804H30xxX3NShqiPSMCUW0M5DYsUthSdcHNuhi0z80YZNRhoeidAtqtTUGe0k9v38mJwOOjax6u6kOaz34r1FLomkhohE1KZM17M0RI84ZSB0c7mg4v_NIywm61g3hFGQ7vIO-yNs10jpjBxZyhCZkNJzLr81I9s3eU6s8hjHQZPLQBQBHA",
-      grade: userData.grade || "Lớp 2A",
-      school: userData.school || "Tiểu học Việt Mỹ"
-    };
-    authService.saveUser(newUser);
-    return { success: true, message: "Đăng ký thành công!", user: newUser };
   },
 
-  login: (usernameOrEmail: string, password: string): { success: boolean; message: string; user?: User } => {
-    const users = authService.getUsers();
-    const user = users.find(u => (u.username === usernameOrEmail || u.email === usernameOrEmail) && u.password === password);
-    if (!user) {
-      return { success: false, message: "Thông tin đăng nhập không chính xác!" };
+  async logout() {
+    await supabase.auth.signOut();
+  },
+
+  async getCurrentUser(): Promise<User | null> {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return null;
+
+    // Fetch fresh profile data including role
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', session.user.id)
+      .single();
+
+    if (error) {
+       console.error("Error fetching current user profile:", error);
+       return null;
     }
-    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-    return { success: true, message: "Đăng nhập thành công!", user };
+
+    return profile;
   },
 
-  logout: () => {
-    localStorage.removeItem(SESSION_KEY);
+  async updateProfile(updatedUser: User): Promise<void> {
+    const { error } = await supabase
+      .from('profiles')
+      .update(updatedUser)
+      .eq('id', updatedUser.id);
+    
+    if (error) console.error("Update profile error:", error);
   },
 
-  getCurrentUser: (): User | null => {
-    const sessionJson = localStorage.getItem(SESSION_KEY);
-    return sessionJson ? JSON.parse(sessionJson) : null;
+  async getAllUsers(): Promise<User[]> {
+    const { data } = await supabase.from('profiles').select('*');
+    return data || [];
   },
 
-  updateProfile: (updatedUser: User): void => {
-    authService.saveUser(updatedUser);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
+  async deleteUser(id: string): Promise<void> {
+    await supabase.from('profiles').delete().eq('id', id);
   }
 };
