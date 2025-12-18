@@ -21,6 +21,7 @@ export interface Story {
   image: string;
   content: string;
   summary: string;
+  audioUrl?: string;
 }
 
 export interface DictionaryEntry {

@@ -19,6 +19,9 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, isDarkMo
   const menuRef = useRef<HTMLDivElement>(null);
 
   const isAdmin = user.role === 'admin';
+  const isStoriesView = activeView === 'stories';
+  const isLiveView = activeView === 'live';
+  const isFullHeightView = isStoriesView || isLiveView;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -152,19 +155,21 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, isDarkMo
         user={user}
       />
 
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-6 md:px-10 lg:px-20">
+      <main className={`flex-1 w-full max-w-7xl mx-auto px-4 ${isStoriesView ? 'py-0 md:px-0 lg:px-0' : 'py-6 md:px-10 lg:px-20'}`}>
         {children}
       </main>
 
-      <footer className="py-8 bg-[#f8fcf9] dark:bg-[#102216] border-t border-[#e7f3eb] dark:border-[#2a4535]">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col items-center gap-4">
-          <div className="flex items-center gap-2 opacity-50">
-            <span className="material-symbols-outlined text-primary filled">school</span>
-            <span className="font-bold tracking-tight">Yêu Tiếng Việt</span>
+      {!isFullHeightView && (
+        <footer className="py-8 bg-[#f8fcf9] dark:bg-[#102216] border-t border-[#e7f3eb] dark:border-[#2a4535]">
+          <div className="max-w-7xl mx-auto px-4 flex flex-col items-center gap-4">
+            <div className="flex items-center gap-2 opacity-50">
+              <span className="material-symbols-outlined text-primary filled">school</span>
+              <span className="font-bold tracking-tight">Yêu Tiếng Việt</span>
+            </div>
+            <p className="text-sm text-gray-500">© 2024 Dự án Giáo dục Sáng tạo cho học sinh tiểu học Việt Nam.</p>
           </div>
-          <p className="text-sm text-gray-500">© 2024 Dự án Giáo dục Sáng tạo cho học sinh tiểu học Việt Nam.</p>
-        </div>
-      </footer>
+        </footer>
+      )}
     </div>
   );
 };

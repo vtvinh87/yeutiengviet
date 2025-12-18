@@ -1,6 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { User } from '../types';
+import { storageService } from '../services/storageService';
 
 interface ProfileViewProps {
   user: User;
@@ -17,6 +18,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdate }) => {
   });
 
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +34,34 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdate }) => {
     }, 600);
   };
 
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Kiểm tra kích thước file (giới hạn 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Ảnh quá lớn rồi bé ơi! Hãy chọn ảnh dưới 2MB nhé.");
+      return;
+    }
+
+    setUploading(true);
+    const publicUrl = await storageService.uploadAvatar(user.id, file);
+    
+    if (publicUrl) {
+      // Cập nhật ngay lập tức vào database và state cha
+      const updatedUser = { ...user, avatar: publicUrl };
+      onUpdate(updatedUser);
+      alert("Đã thay ảnh đại diện mới rồi đó!");
+    } else {
+      alert("Hệ thống gặp lỗi khi tải ảnh, bé thử lại sau nhé.");
+    }
+    setUploading(false);
+  };
+
   return (
     <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="flex flex-col gap-2">
@@ -43,10 +74,29 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdate }) => {
           <div className="bg-white dark:bg-surface-dark rounded-3xl p-8 shadow-soft border border-gray-100 dark:border-white/5 flex flex-col items-center text-center">
             <div className="relative group">
               <div 
-                className="h-32 w-32 rounded-full border-4 border-primary shadow-xl bg-center bg-cover transition-transform group-hover:scale-105" 
+                className={`h-32 w-32 rounded-full border-4 border-primary shadow-xl bg-center bg-cover transition-transform ${uploading ? 'opacity-50 grayscale' : 'group-hover:scale-105'}`} 
                 style={{backgroundImage: `url("${user.avatar}")`}}
-              ></div>
-              <button className="absolute bottom-0 right-0 size-10 rounded-full bg-primary text-text-main shadow-lg flex items-center justify-center border-4 border-white dark:border-surface-dark hover:scale-110 transition-transform">
+              >
+                {uploading && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="size-8 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  </div>
+                )}
+              </div>
+              
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                accept="image/*" 
+                className="hidden" 
+              />
+              
+              <button 
+                onClick={handleAvatarClick}
+                disabled={uploading}
+                className="absolute bottom-0 right-0 size-10 rounded-full bg-primary text-text-main shadow-lg flex items-center justify-center border-4 border-white dark:border-surface-dark hover:scale-110 transition-transform disabled:opacity-50"
+              >
                 <span className="material-symbols-outlined text-sm">photo_camera</span>
               </button>
             </div>

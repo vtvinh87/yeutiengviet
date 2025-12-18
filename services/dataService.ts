@@ -23,23 +23,72 @@ const DEFAULT_STORIES: Story[] = [
     duration: '5 phút',
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDBWmZQHrocpbDAKCXuiBy3bq74U8DVD4gv3AjYtH2uypfLrgZkJ0I_5X2Jdl4cRZQXRQz4ovcvO_I3jUfIpnvALxy5NLut1Dok1epJ0Kw0lXLnIOxQkGudY2SYcuiQFWydbiT5NrqJf1AkF8LwXQVhh6h9XmXrkf1SsfquR32kbs7UahlXoDjLJKz3CTk-Tb514wwgwPZ6S3mRpIhe7n2KE6tvHbNOx47GL6cW-3Re913eahH0UfXBNWXQs6eHCDAzCtKWzRFFhQ',
     summary: 'Truyền thuyết về người anh hùng làng Gióng.',
-    content: `Vào đời Hùng Vương thứ sáu, ở làng Gióng có hai vợ chồng ông lão chăm chỉ làm ăn và ăn ở phúc đức nhưng mãi không có con. \n\nMột hôm bà ra đồng thấy một vết chân rất to, liền đặt bàn chân mình lên ướm thử để xem thua kém bao nhiêu. Không ngờ về nhà bà thụ thai và mười hai tháng sau sinh được một cậu con trai khôi ngô tuấn tú.\n\nKỳ lạ thay, cậu bé ấy lên ba tuổi mà vẫn không biết nói, biết cười, đặt đâu nằm đấy. Bấy giờ có giặc Ân đến xâm phạm bờ cõi nước ta. Thế giặc mạnh, nhà vua lo sợ, bèn sai sứ giả đi khắp nơi rao tìm người tài giỏi cứu nước.\n\nĐứa bé nghe tin, bỗng dưng cất tiếng nói: "Mẹ ra mời sứ giả vào đây". Sứ giả vào, đứa bé bảo: "Ông về tâu vua sắm cho ta một con ngựa sắt, một cái roi sắt và một tấm áo giáp sắt, ta sẽ phá tan lũ giặc này".`
+    content: `Vào đời Hùng Vương thứ sáu, ở làng Gióng có hai vợ chồng ông lão chăm chỉ làm ăn và ăn ở phúc đức nhưng mãi không có con.`,
+    audioUrl: 'https://ajxctwbzpgdpypiwpvpu.supabase.co/storage/v1/object/public/story-audios/narration-sample.wav'
   }
 ];
 
 export const dataService = {
   async getStories(): Promise<Story[]> {
-    const { data, error } = await supabase.from('stories').select('*');
-    if (error || !data || data.length === 0) return DEFAULT_STORIES;
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('stories')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (!data || data.length === 0) return DEFAULT_STORIES;
+      
+      return data.map((item: any) => ({
+        id: item.id,
+        title: item.title,
+        content: item.content,
+        summary: item.summary,
+        duration: item.duration,
+        image: item.image,
+        audioUrl: item.audio_url // Ánh xạ từ snake_case của DB sang camelCase của App
+      }));
+    } catch (err) {
+      console.error("Lỗi getStories:", err);
+      return DEFAULT_STORIES;
+    }
   },
 
   async saveStory(story: Story) {
-    await supabase.from('stories').upsert([story]);
+    // 1. Chuẩn bị object dữ liệu với tên cột chính xác trong Database (snake_case)
+    const dbData: any = {
+      title: story.title,
+      content: story.content,
+      summary: story.summary,
+      duration: story.duration,
+      image: story.image,
+      audio_url: story.audioUrl // Đảm bảo trùng khớp với cột audio_url trong SQL
+    };
+
+    // 2. Xử lý ID: Nếu là truyện mới (id là 'new' hoặc undefined), không gửi ID để Supabase tự tạo UUID.
+    // Nếu ID là một UUID hợp lệ, gửi đi để Update.
+    if (story.id && story.id !== 'new' && story.id.length > 10) {
+      dbData.id = story.id;
+    }
+
+    console.log("Đang lưu dữ liệu vào Supabase:", dbData);
+
+    const { data, error } = await supabase
+      .from('stories')
+      .upsert([dbData])
+      .select();
+
+    if (error) {
+      console.error("Chi tiết lỗi lưu Database:", error);
+      throw error;
+    }
+    
+    return data;
   },
 
   async deleteStory(id: string) {
-    await supabase.from('stories').delete().eq('id', id);
+    const { error } = await supabase.from('stories').delete().eq('id', id);
+    if (error) throw error;
   },
 
   async getImages(): Promise<AdminImage[]> {
@@ -57,11 +106,15 @@ export const dataService = {
   },
 
   async getSystemImage(key: string, fallback: string): Promise<string> {
-    const { data } = await supabase
-      .from('admin_images')
-      .select('url')
-      .eq('key', key)
-      .single();
-    return data?.url || fallback;
+    try {
+      const { data } = await supabase
+        .from('admin_images')
+        .select('url')
+        .eq('key', key)
+        .single();
+      return data?.url || fallback;
+    } catch {
+      return fallback;
+    }
   }
 };

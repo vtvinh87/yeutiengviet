@@ -12,13 +12,11 @@ const StoriesView: React.FC = () => {
   const [stories, setStories] = useState<Story[]>([]);
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(15);
   const [isAskingAI, setIsAskingAI] = useState(false);
   const [aiResponse, setAiResponse] = useState('');
   const [loadingAI, setLoadingAI] = useState(false);
 
   useEffect(() => {
-    // Fix: Wait for getStories promise to resolve before updating state
     const loadData = async () => {
       const loaded = await dataService.getStories();
       setStories(loaded);
@@ -26,6 +24,11 @@ const StoriesView: React.FC = () => {
     };
     loadData();
   }, []);
+
+  const handleSelectStory = (story: Story) => {
+    setSelectedStory(story);
+    setIsPlaying(false);
+  };
 
   const handleAskAI = async () => {
     if (!selectedStory) return;
@@ -45,21 +48,23 @@ const StoriesView: React.FC = () => {
   if (!selectedStory) return <div className="p-8 text-center font-bold">Đang tải truyện...</div>;
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-180px)] -m-4 md:-m-10 lg:-m-20 bg-white dark:bg-[#0d1b12] overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)] w-full bg-white dark:bg-[#0d1b12] overflow-hidden">
       <StoryList 
         stories={stories} 
         selectedStory={selectedStory} 
-        onSelectStory={setSelectedStory} 
+        onSelectStory={handleSelectStory} 
         isPlaying={isPlaying} 
+        audioPlayer={
+          <AudioPlayer 
+            isPlaying={isPlaying} 
+            onTogglePlay={() => setIsPlaying(!isPlaying)} 
+            audioUrl={selectedStory.audioUrl} 
+          />
+        }
       />
 
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative border-t lg:border-t-0 border-[#cfe7d7] dark:border-gray-800">
         <StoryDisplay story={selectedStory} onAskAI={handleAskAI} />
-        <AudioPlayer 
-          isPlaying={isPlaying} 
-          onTogglePlay={() => setIsPlaying(!isPlaying)} 
-          progress={progress} 
-        />
       </div>
 
       <TeacherDialog 
