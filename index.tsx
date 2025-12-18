@@ -3,11 +3,18 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 
-class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean}> {
-  constructor(props: {children: React.ReactNode}) {
-    super(props);
-    this.state = { hasError: false };
-  }
+// Explicitly define interfaces for Props and State to ensure class members are correctly recognized by TypeScript
+interface ErrorBoundaryProps {
+  children?: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  // Initialize state as a class property instead of in constructor to resolve property detection issues
+  public state: ErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError() {
     return { hasError: true };
@@ -18,6 +25,7 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
   }
 
   render() {
+    // Accessing state and props via 'this' as standard for React class components
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-background-dark flex flex-col items-center justify-center p-6 text-center">
@@ -45,6 +53,7 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
+// Wrap the root application in ErrorBoundary and StrictMode for safety and best practices
 root.render(
   <React.StrictMode>
     <ErrorBoundary>

@@ -1,11 +1,14 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-const apiKey = process.env.API_KEY;
+// Hàm hỗ trợ lấy AI instance an toàn
+export const getAiClient = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey || apiKey === 'undefined' || apiKey === 'MISSING_API_KEY') {
+    return null;
+  }
+  return new GoogleGenAI({ apiKey });
+};
 
-if (!apiKey) {
-  console.warn("CẢNH BÁO: Không tìm thấy API_KEY trong môi trường. Các tính năng AI sẽ không hoạt động.");
-}
-
-// Khởi tạo một instance duy nhất. Nếu key lỗi, nó sẽ throw lỗi lúc gọi content chứ không crash app lúc import.
-export const ai = new GoogleGenAI({ apiKey: apiKey || 'MISSING_API_KEY' });
+// Giữ lại instance cũ để tương thích ngược nhưng sẽ trả về null nếu key sai
+export const ai = getAiClient() as any;
