@@ -22,12 +22,13 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
   const [challenges, setChallenges] = useState<WordChallenge[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [score, setScore] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(60);
+  const [timeLeft, setTimeLeft] = useState(180); // Tăng lên 180 giây (3 phút)
   const [shuffledLetters, setShuffledLetters] = useState<{ char: string; originalIdx: number; used: boolean }[]>([]);
   const [userInput, setUserInput] = useState<{ char: string; fromIdx: number }[]>([]);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const TOTAL_TIME = 180;
 
   // Xáo trộn chuỗi
   const shuffleString = (str: string) => {
@@ -42,6 +43,7 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
   // Gọi AI tạo bộ từ vựng giáo dục
   const fetchChallenges = async () => {
     setGameState('loading');
+    setTimeLeft(TOTAL_TIME); // Đặt lại thời gian khi bắt đầu nạp câu hỏi
     const ai = getAiInstance();
     
     // Dữ liệu dự phòng nếu AI gặp sự cố
@@ -190,6 +192,13 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [gameState, timeLeft]);
 
+  // Hàm định dạng thời gian MM:SS
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   if (gameState === 'landing') {
     return (
       <div className="flex flex-col gap-8 animate-in fade-in duration-500 max-w-4xl mx-auto w-full">
@@ -304,11 +313,11 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
         </div>
 
         <div className="flex flex-col items-center">
-          <div className={`text-3xl font-black tabular-nums ${timeLeft < 10 ? 'text-red-500 animate-bounce' : 'text-primary'}`}>
-            00:{timeLeft.toString().padStart(2, '0')}
+          <div className={`text-3xl font-black tabular-nums ${timeLeft < 15 ? 'text-red-500 animate-bounce' : 'text-primary'}`}>
+            {formatTime(timeLeft)}
           </div>
           <div className="w-24 h-2 bg-gray-100 dark:bg-white/10 rounded-full mt-1 overflow-hidden">
-            <div className="h-full bg-primary transition-all duration-1000" style={{ width: `${(timeLeft/60)*100}%` }} />
+            <div className="h-full bg-primary transition-all duration-1000" style={{ width: `${(timeLeft/TOTAL_TIME)*100}%` }} />
           </div>
         </div>
 

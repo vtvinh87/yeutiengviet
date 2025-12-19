@@ -15,6 +15,8 @@ export interface User {
   exp: number;
   level: number;
   streak: number; // Chuỗi ngày học tập
+  stars: number; // Ngôi sao tích lũy
+  lastChallengeDate?: string; // Ngày cuối cùng hoàn thành thử thách (ISO string)
 }
 
 export interface Story {

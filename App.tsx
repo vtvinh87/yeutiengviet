@@ -76,7 +76,7 @@ const App: React.FC = () => {
     const id = Date.now();
     setExpNotifications(prev => [...prev, { id, amount }]);
     
-    // Tự động xóa sau khi hoạt ảnh kết thúc (tăng lên 2.5s để khớp CSS)
+    // Tự động xóa sau khi hoạt ảnh kết thúc
     setTimeout(() => {
       setExpNotifications(prev => prev.filter(n => n.id !== id));
     }, 2500);
@@ -107,7 +107,7 @@ const App: React.FC = () => {
       case 'stories':
         return <StoriesView onAwardExp={handleAwardExp} />;
       case 'games':
-        return <GamesView setView={handleSetView} />;
+        return <GamesView setView={handleSetView} user={user} onAwardExp={handleAwardExp} />;
       case 'live':
         return <LiveView />;
       case 'game-detail':
@@ -145,7 +145,6 @@ const App: React.FC = () => {
         {renderView()}
       </Layout>
 
-      {/* Container cho hiệu ứng EXP bay lên bùng nổ ở giữa màn hình */}
       <div className="fixed inset-0 flex items-center justify-center z-[9999] pointer-events-none">
         {expNotifications.map(notif => (
           <div 
