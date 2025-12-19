@@ -17,6 +17,7 @@ const DictionaryView: React.FC<DictionaryViewProps> = ({ onAwardExp }) => {
     if (!query.trim()) return;
     
     setLoading(true);
+    setResult(null); // Clear previous result while searching
     try {
       const data = await dictionaryService.defineWord(query);
       setResult(data);
@@ -80,17 +81,36 @@ const DictionaryView: React.FC<DictionaryViewProps> = ({ onAwardExp }) => {
             <button 
               type="submit"
               disabled={loading}
-              className="flex items-center justify-center rounded-full h-15 px-10 bg-primary hover:bg-primary-hover text-[#0d1b12] font-black text-lg shadow-xl shadow-primary/30 transition-all active:scale-95 disabled:opacity-50"
+              className="flex items-center justify-center gap-2 rounded-full h-15 px-10 bg-primary hover:bg-primary-hover text-[#0d1b12] font-black text-lg shadow-xl shadow-primary/30 transition-all active:scale-95 disabled:opacity-70"
             >
               {loading ? (
-                <div className="size-6 border-3 border-[#0d1b12]/30 border-t-[#0d1b12] rounded-full animate-spin"></div>
+                <>
+                  <div className="size-6 border-3 border-[#0d1b12]/30 border-t-[#0d1b12] rounded-full animate-spin"></div>
+                  <span className="ml-1">Đang tra...</span>
+                </>
               ) : 'Tra từ'}
             </button>
           </form>
         </div>
       </section>
 
-      {result && (
+      {/* Hiệu ứng Loading khi đang tra từ */}
+      {loading && (
+        <div className="flex flex-col items-center justify-center py-20 gap-6 animate-in fade-in duration-500">
+          <div className="relative">
+            <div className="size-24 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+               <span className="material-symbols-outlined text-primary text-3xl animate-pulse">menu_book</span>
+            </div>
+          </div>
+          <div className="text-center">
+            <h3 className="text-2xl font-black mb-2">Cô giáo AI đang tra từ giúp bé...</h3>
+            <p className="text-gray-500 font-medium">Cô đang tìm lời giải thích dễ hiểu nhất và vẽ hình minh họa cho bé đây!</p>
+          </div>
+        </div>
+      )}
+
+      {result && !loading && (
         <div className="animate-in fade-in slide-in-from-bottom-10 duration-700">
           <div className="flex items-center gap-3 mb-8 px-2">
             <div className="size-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">

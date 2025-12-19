@@ -36,7 +36,6 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
   useEffect(() => {
     audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
     
-    // Auto generate first exercise on mount
     const initExercise = async () => {
       setIsInitialLoading(true);
       try {
@@ -46,15 +45,11 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
         const firstEx = {
           title: content.title,
           text: content.text,
-          imageUrl: `https://picsum.photos/seed/${encodeURIComponent(content.title)}/800/600`,
+          imageUrl: content.imageUrl,
           audioBuffer: audio
         };
         setCurrentExercise(firstEx);
-        
-        // Auto play narration if audio exists
-        if (audio) {
-          playBuffer(audio);
-        }
+        if (audio) playBuffer(audio);
       } catch (error) {
         console.error("Initial generation error:", error);
       } finally {
@@ -89,7 +84,7 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
       setPreloadedNext({
         title: nextContent.title,
         text: nextContent.text,
-        imageUrl: `https://picsum.photos/seed/${encodeURIComponent(nextContent.title)}/800/600`,
+        imageUrl: nextContent.imageUrl,
         audioBuffer: nextAudio
       });
     } catch (error) {
@@ -100,7 +95,6 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
 
   const handleSpeakSample = async () => {
     if (!audioCtxRef.current || !currentExercise) return;
-    
     setIsSpeaking(true);
     if (currentExercise.audioBuffer) {
       playBuffer(currentExercise.audioBuffer);
@@ -134,11 +128,11 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
               const result = await readingService.analyzePronunciation(base64String, currentExercise.text);
               setFeedbackData(result);
               setShowFeedback(true);
-              if (onAwardExp) onAwardExp(20);
+              if (onAwardExp) onAwardExp(Math.floor(result.accuracy / 2));
             }
           } catch (error) {
             console.error("Analysis error:", error);
-            alert("Cô không thể phân tích được giọng đọc của bé. Bé hãy thử lại nhé!");
+            alert("Cô giáo AI đang bận một chút, bé hãy đọc lại lần nữa nhé!");
           } finally {
             setIsProcessing(false);
           }
@@ -167,12 +161,7 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
       setHasStartedPreload(false);
       setShowFeedback(false);
       setFeedbackData(null);
-      
-      // Auto play the preloaded audio
-      if (preloadedNext.audioBuffer) {
-        playBuffer(preloadedNext.audioBuffer);
-      }
-      
+      if (preloadedNext.audioBuffer) playBuffer(preloadedNext.audioBuffer);
       preloadNextContent();
     }
   };
@@ -187,15 +176,15 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
           </div>
         </div>
         <div className="text-center">
-          <h3 className="text-2xl font-black mb-2">Đang soạn bài học cho bé...</h3>
-          <p className="text-gray-500 font-medium">Cô giáo AI đang tạo một bài đọc thật hay dành riêng cho bé đây!</p>
+          <h3 className="text-2xl font-black mb-2">Đang chuẩn bị bài học...</h3>
+          <p className="text-gray-500 font-medium">Cô giáo AI đang vẽ tranh và soạn bài cho bé!</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-8 animate-in slide-in-from-right-8 duration-500">
+    <div className="flex flex-col gap-8 animate-in slide-in-from-right-8 duration-500 pb-20">
       <ReadingHeader title={currentExercise.title} isPreloaded={!!preloadedNext} />
 
       <ReadingExerciseDisplay 
@@ -217,8 +206,9 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
           score={feedbackData.score}
           accuracy={feedbackData.accuracy}
           feedback={feedbackData.feedback}
-          words={feedbackData.words}
-          canGoNext={feedbackData.accuracy >= 80 && !!preloadedNext}
+          wordComparison={feedbackData.wordComparison}
+          actualTranscription={feedbackData.actualTranscription}
+          canGoNext={feedbackData.accuracy >= 70 && !!preloadedNext}
           onNext={handleNextExercise}
         />
       )}
