@@ -208,7 +208,8 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
           feedback={feedbackData.feedback}
           wordComparison={feedbackData.wordComparison}
           actualTranscription={feedbackData.actualTranscription}
-          canGoNext={feedbackData.accuracy >= 70 && !!preloadedNext}
+          canGoNext={feedbackData.accuracy >= 80}
+          isPreloading={!preloadedNext}
           onNext={handleNextExercise}
         />
       )}
