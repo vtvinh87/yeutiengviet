@@ -1,10 +1,11 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
 import { DictionaryEntry } from "../types";
+import { getAiInstance } from "./geminiClient";
 
 export const dictionaryService = {
   async defineWord(word: string): Promise<DictionaryEntry> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || 'MISSING' });
+    const ai = getAiInstance();
     
     try {
       // 1. Get structured definition from Gemini 3 Flash
@@ -63,7 +64,6 @@ export const dictionaryService = {
       };
     } catch (error) {
       console.error("Dictionary Service Error:", error);
-      // Fallback response so the app doesn't crash
       return {
         word: word,
         type: "Từ vựng",

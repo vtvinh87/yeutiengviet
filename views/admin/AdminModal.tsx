@@ -5,7 +5,7 @@ import { IMAGE_KEYS } from '../../services/dataService';
 import { aiTeacherService } from '../../services/aiTeacherService';
 import { audioBufferToWav } from '../../services/audioUtils';
 import { storageService } from '../../services/storageService';
-import { GoogleGenAI } from "@google/genai";
+import { getAiInstance } from '../../services/geminiClient';
 
 interface AdminModalProps {
   activeTab: 'users' | 'stories' | 'images';
@@ -33,7 +33,6 @@ const AdminModal: React.FC<AdminModalProps> = ({ activeTab, editingItem, onClose
   const [autoDuration, setAutoDuration] = useState(editingItem?.duration || '');
   const [isSaving, setIsSaving] = useState(false);
   
-  // States for Image Upload
   const [imageUrl, setImageUrl] = useState(editingItem?.url || '');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -60,7 +59,7 @@ const AdminModal: React.FC<AdminModalProps> = ({ activeTab, editingItem, onClose
     setAudioStatus('Đang tạo audio...');
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = getAiInstance();
       
       const summaryResult = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -119,14 +118,13 @@ const AdminModal: React.FC<AdminModalProps> = ({ activeTab, editingItem, onClose
     const formData = new FormData(e.currentTarget as HTMLFormElement);
     const values = Object.fromEntries(formData.entries());
     
-    // Tạo bản sao dữ liệu và ghi đè các giá trị tự động/state
     let finalData = { 
       ...editingItem, 
       ...values,
     };
 
     if (activeTab === 'images') {
-      finalData.url = imageUrl; // Luôn lấy từ state imageUrl vì nó chứa link Supabase sau khi upload
+      finalData.url = imageUrl;
     }
 
     if (activeTab === 'stories') {
@@ -161,7 +159,6 @@ const AdminModal: React.FC<AdminModalProps> = ({ activeTab, editingItem, onClose
       <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose}></div>
       <div className="relative w-full max-w-2xl bg-[#102216] border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         
-        {/* Loading Overlay */}
         {(isGeneratingAudio || isSaving || isUploadingImage) && (
           <div className="absolute inset-0 z-50 bg-[#102216]/90 backdrop-blur-xl flex flex-col items-center justify-center p-12 text-center animate-in fade-in duration-300">
             <div className="relative mb-8">

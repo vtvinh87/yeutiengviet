@@ -3,20 +3,27 @@ import { GoogleGenAI } from "@google/genai";
 
 /**
  * Khởi tạo GoogleGenAI client instance.
- * Luôn sử dụng process.env.API_KEY theo quy định của hệ thống.
+ * Tuân thủ quy định sử dụng process.env.API_KEY.
+ * Tạo instance mới mỗi lần gọi để đảm bảo sử dụng khóa cập nhật nhất.
  */
 export const getAiInstance = () => {
-  const apiKey = process.env.API_KEY;
-
-  if (!apiKey || apiKey === 'undefined' || apiKey === '') {
-    console.error("Yêu Tiếng Việt: API_KEY không hợp lệ hoặc chưa được cấu hình.");
-    return null;
-  }
-
+  let apiKey = '';
+  
   try {
-    return new GoogleGenAI({ apiKey });
+    // Kiểm tra an toàn sự tồn tại của process.env
+    if (typeof process !== 'undefined' && process.env) {
+      apiKey = process.env.API_KEY || '';
+    }
   } catch (error) {
-    console.error("Yêu Tiếng Việt: Lỗi khi khởi tạo Gemini SDK:", error);
-    return null;
+    console.error("Yêu Tiếng Việt: Không thể truy cập process.env", error);
   }
+
+  // Nếu khóa bị trả về là chuỗi "undefined" (thường do lỗi bundler)
+  if (!apiKey || apiKey === 'undefined' || apiKey === '') {
+    console.warn("Yêu Tiếng Việt: API_KEY chưa được cấu hình trong môi trường.");
+    // Vẫn trả về instance để SDK ném lỗi cụ thể nếu cần, 
+    // hoặc giúp debug dễ hơn thay vì trả về null gây crash ngang.
+  }
+
+  return new GoogleGenAI({ apiKey });
 };
