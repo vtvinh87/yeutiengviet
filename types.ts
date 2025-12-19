@@ -14,9 +14,9 @@ export interface User {
   role: 'user' | 'admin';
   exp: number;
   level: number;
-  streak: number; // Chuỗi ngày học tập
-  stars: number; // Ngôi sao tích lũy
-  lastChallengeDate?: string; // Ngày cuối cùng hoàn thành thử thách (ISO string)
+  streak: number; 
+  stars: number; 
+  lastChallengeDate?: string; 
 }
 
 export interface Story {
@@ -40,6 +40,15 @@ export interface DictionaryEntry {
   image: string;
 }
 
+export interface ReadingPractice {
+  id: string;
+  title: string;
+  text: string;
+  image_url: string;
+  audio_url?: string; // Mới thêm
+  created_at?: string;
+}
+
 export interface ReadingExercise {
   title: string;
   topic: string;
@@ -52,5 +61,5 @@ export interface AdminImage {
   url: string;
   description: string;
   category: string;
-  key?: string; // Identifier for system-specific images
+  key?: string; 
 }

@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { aiTeacherService } from '../services/aiTeacherService';
 import { readingService } from '../services/readingService';
+import { authService } from '../services/authService';
 import ReadingHeader from './reading/ReadingHeader';
 import ReadingExerciseDisplay from './reading/ReadingExerciseDisplay';
 import ReadingRecorder from './reading/ReadingRecorder';
@@ -12,6 +13,7 @@ interface ReadingExercise {
   text: string;
   imageUrl: string;
   audioBuffer?: AudioBuffer | null;
+  isGenerated: boolean;
 }
 
 interface ReadingViewProps {
@@ -28,6 +30,8 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [hasStartedPreload, setHasStartedPreload] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isSwitching, setIsSwitching] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -39,6 +43,9 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
     const initExercise = async () => {
       setIsInitialLoading(true);
       try {
+        const user = await authService.getCurrentUser();
+        setIsAdmin(user?.role === 'admin');
+
         const content = await readingService.generateNextExercise();
         const audio = await aiTeacherService.generateSpeechBuffer(content.text, audioCtxRef.current!);
         
@@ -46,7 +53,8 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
           title: content.title,
           text: content.text,
           imageUrl: content.imageUrl,
-          audioBuffer: audio
+          audioBuffer: audio,
+          isGenerated: content.isGenerated
         };
         setCurrentExercise(firstEx);
         if (audio) playBuffer(audio);
@@ -85,7 +93,8 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
         title: nextContent.title,
         text: nextContent.text,
         imageUrl: nextContent.imageUrl,
-        audioBuffer: nextAudio
+        audioBuffer: nextAudio,
+        isGenerated: nextContent.isGenerated
       });
     } catch (error) {
       console.error("Preload error:", error);
@@ -132,7 +141,6 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
             }
           } catch (error) {
             console.error("Analysis error:", error);
-            alert("Cô giáo AI đang bận một chút, bé hãy đọc lại lần nữa nhé!");
           } finally {
             setIsProcessing(false);
           }
@@ -154,7 +162,8 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
     }
   };
 
-  const handleNextExercise = () => {
+  const handleNextExercise = async () => {
+    // Nếu bài tiếp theo đã được nạp sẵn rồi thì đổi ngay
     if (preloadedNext) {
       setCurrentExercise(preloadedNext);
       setPreloadedNext(null);
@@ -163,6 +172,32 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
       setFeedbackData(null);
       if (preloadedNext.audioBuffer) playBuffer(preloadedNext.audioBuffer);
       preloadNextContent();
+      return;
+    }
+
+    // Nếu chưa có bài nạp sẵn (do AI lỗi hoặc mạng chậm), thực hiện nạp trực tiếp
+    setIsSwitching(true);
+    try {
+      const nextContent = await readingService.generateNextExercise();
+      const nextAudio = await aiTeacherService.generateSpeechBuffer(nextContent.text, audioCtxRef.current!);
+      
+      const newEx = {
+        title: nextContent.title,
+        text: nextContent.text,
+        imageUrl: nextContent.imageUrl,
+        audioBuffer: nextAudio,
+        isGenerated: nextContent.isGenerated
+      };
+      
+      setCurrentExercise(newEx);
+      setShowFeedback(false);
+      setFeedbackData(null);
+      if (nextAudio) playBuffer(nextAudio);
+      setHasStartedPreload(false);
+    } catch (err) {
+      console.error("Manual fetch next error:", err);
+    } finally {
+      setIsSwitching(false);
     }
   };
 
@@ -177,7 +212,7 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
         </div>
         <div className="text-center">
           <h3 className="text-2xl font-black mb-2">Đang chuẩn bị bài học...</h3>
-          <p className="text-gray-500 font-medium">Cô giáo AI đang vẽ tranh và soạn bài cho bé!</p>
+          <p className="text-gray-500 font-medium">Cô giáo AI đang soạn bài và ghi âm giọng đọc cho bé!</p>
         </div>
       </div>
     );
@@ -188,10 +223,14 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
       <ReadingHeader title={currentExercise.title} isPreloaded={!!preloadedNext} />
 
       <ReadingExerciseDisplay 
+        title={currentExercise.title}
         imageUrl={currentExercise.imageUrl} 
         text={currentExercise.text} 
         isSpeaking={isSpeaking}
         onSpeak={handleSpeakSample}
+        audioBuffer={currentExercise.audioBuffer}
+        isAdmin={isAdmin}
+        isGenerated={currentExercise.isGenerated}
       />
 
       <ReadingRecorder 
@@ -209,7 +248,7 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
           wordComparison={feedbackData.wordComparison}
           actualTranscription={feedbackData.actualTranscription}
           canGoNext={feedbackData.accuracy >= 80}
-          isPreloading={!preloadedNext}
+          isPreloading={isSwitching || (!preloadedNext && hasStartedPreload)}
           onNext={handleNextExercise}
         />
       )}

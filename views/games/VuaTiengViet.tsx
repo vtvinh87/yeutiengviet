@@ -27,7 +27,8 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
   const [userInput, setUserInput] = useState<{ char: string; fromIdx: number }[]>([]);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  // Fix: Replaced NodeJS.Timeout with any because the application runs in a browser environment where setInterval returns a number
+  const timerRef = useRef<any>(null);
   const TOTAL_TIME = 180;
 
   // Xáo trộn chuỗi
@@ -225,7 +226,7 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
 
            <button 
              onClick={fetchChallenges} 
-             className="h-20 px-16 bg-primary hover:bg-primary-hover text-[#102216] font-black rounded-full shadow-xl shadow-primary/40 transition-all hover:scale-105 active:scale-95 text-2xl flex items-center gap-4 z-10"
+             className="h-20 px-16 bg-primary text-[#102216] font-black rounded-full shadow-xl shadow-primary/40 transition-all hover:scale-105 active:scale-95 text-2xl flex items-center gap-4 z-10"
            >
              Bắt đầu chinh phục
              <span className="material-symbols-outlined text-3xl">rocket_launch</span>

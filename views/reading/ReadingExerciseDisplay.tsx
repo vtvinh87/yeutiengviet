@@ -1,17 +1,33 @@
 
-import React from 'react';
+import React, { useState } from 'react';
+import { readingService } from '../../services/readingService';
 
 interface ReadingExerciseDisplayProps {
+  title: string;
   imageUrl: string;
   text: string;
   isSpeaking: boolean;
   onSpeak: () => void;
+  audioBuffer?: AudioBuffer | null;
+  isAdmin?: boolean;
+  isGenerated?: boolean;
 }
 
-const ReadingExerciseDisplay: React.FC<ReadingExerciseDisplayProps> = ({ imageUrl, text, isSpeaking, onSpeak }) => {
+const ReadingExerciseDisplay: React.FC<ReadingExerciseDisplayProps> = ({ 
+  title, 
+  imageUrl, 
+  text, 
+  isSpeaking, 
+  onSpeak, 
+  audioBuffer, 
+  isAdmin,
+  isGenerated = false
+}) => {
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+
   const handleDownloadImage = async () => {
     try {
-      // Nếu là data URI (base64), ta có thể tải trực tiếp
       if (imageUrl.startsWith('data:')) {
         const link = document.createElement('a');
         link.href = imageUrl;
@@ -20,7 +36,6 @@ const ReadingExerciseDisplay: React.FC<ReadingExerciseDisplayProps> = ({ imageUr
         link.click();
         document.body.removeChild(link);
       } else {
-        // Nếu là URL bên ngoài, ta fetch về blob để tránh lỗi CORS khi tải
         const response = await fetch(imageUrl);
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -34,7 +49,21 @@ const ReadingExerciseDisplay: React.FC<ReadingExerciseDisplayProps> = ({ imageUr
       }
     } catch (error) {
       console.error("Download failed", error);
-      alert("Ối! Cô không tải được ảnh rồi. Bé hãy thử lại sau nhé!");
+    }
+  };
+
+  const handleSaveExercise = async () => {
+    // Nếu là bài từ kho thì không cho lưu nữa
+    if (!isGenerated) return;
+    
+    setIsSaving(true);
+    const success = await readingService.saveExercise(title, text, imageUrl, audioBuffer);
+    setIsSaving(false);
+    if (success) {
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 3000);
+    } else {
+      alert("Không thể lưu bài tập. Vui lòng kiểm tra lại Storage bucket 'reading-audios'!");
     }
   };
 
@@ -49,22 +78,37 @@ const ReadingExerciseDisplay: React.FC<ReadingExerciseDisplayProps> = ({ imageUr
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
           
-          {/* Nút tải ảnh về */}
-          <button 
-            onClick={handleDownloadImage}
-            className="absolute bottom-4 right-4 size-12 bg-white/90 dark:bg-black/60 backdrop-blur text-primary rounded-full flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-all group/btn"
-            title="Tải ảnh này về máy"
-          >
-            <span className="material-symbols-outlined filled group-hover/btn:animate-bounce">download</span>
-            <div className="absolute -top-10 scale-0 group-hover/btn:scale-100 transition-all bg-black/80 text-white text-[10px] px-2 py-1 rounded-md font-bold whitespace-nowrap">
-              Lưu ảnh về máy
-            </div>
-          </button>
+          <div className="absolute bottom-4 right-4 flex gap-2">
+            {isAdmin && (
+              <button 
+                onClick={handleSaveExercise}
+                disabled={isSaving || isSaved || !isGenerated}
+                className={`size-12 rounded-full flex items-center justify-center shadow-lg transition-all group/save ${
+                  !isGenerated || isSaved
+                    ? 'bg-primary/40 text-white cursor-not-allowed' 
+                    : 'bg-white/90 dark:bg-black/60 text-primary hover:scale-110 active:scale-95'
+                }`}
+                title={!isGenerated ? "Bài tập này đã có sẵn trong kho dữ liệu" : "Lưu bài tập này vào kho lưu trữ"}
+              >
+                <span className="material-symbols-outlined filled">
+                  {isSaving ? 'sync' : (!isGenerated ? 'verified' : (isSaved ? 'check' : 'bookmark'))}
+                </span>
+                <div className="absolute -top-10 scale-0 group-hover/save:scale-100 transition-all bg-black/80 text-white text-[10px] px-2 py-1 rounded-md font-bold whitespace-nowrap">
+                  {!isGenerated ? 'Đã có trong kho' : (isSaved ? 'Đã lưu!' : 'Lưu vào kho')}
+                </div>
+              </button>
+            )}
 
-          <div className="absolute bottom-4 left-4 flex items-center gap-2">
-            <span className="px-3 py-1 bg-primary/20 backdrop-blur-md border border-primary/30 rounded-full text-[10px] font-black text-white uppercase tracking-widest shadow-sm">
-              Tranh vẽ AI
-            </span>
+            <button 
+              onClick={handleDownloadImage}
+              className="size-12 bg-white/90 dark:bg-black/60 backdrop-blur text-primary rounded-full flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-all group/btn"
+              title="Tải ảnh này về máy"
+            >
+              <span className="material-symbols-outlined filled group-hover/btn:animate-bounce">download</span>
+              <div className="absolute -top-10 scale-0 group-hover/btn:scale-100 transition-all bg-black/80 text-white text-[10px] px-2 py-1 rounded-md font-bold whitespace-nowrap">
+                Lưu ảnh về máy
+              </div>
+            </button>
           </div>
         </div>
 

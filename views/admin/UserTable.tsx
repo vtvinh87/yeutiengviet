@@ -5,7 +5,7 @@ import { User } from '../../types';
 interface UserTableProps {
   users: User[];
   onEdit: (user: User) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string, name: string) => void;
 }
 
 const UserTable: React.FC<UserTableProps> = ({ users, onEdit, onDelete }) => {
@@ -35,7 +35,7 @@ const UserTable: React.FC<UserTableProps> = ({ users, onEdit, onDelete }) => {
                 <button onClick={() => onEdit(user)} className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10 rounded-lg">
                   <span className="material-symbols-outlined text-lg">edit</span>
                 </button>
-                <button onClick={() => onDelete(user.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg">
+                <button onClick={() => onDelete(user.id, user.name)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg">
                   <span className="material-symbols-outlined text-lg">delete</span>
                 </button>
               </div>

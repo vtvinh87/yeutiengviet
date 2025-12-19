@@ -5,7 +5,7 @@ import { AdminImage } from '../../types';
 interface ImageTableProps {
   images: AdminImage[];
   onEdit: (image: AdminImage) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string, name: string) => void;
 }
 
 const ImageTable: React.FC<ImageTableProps> = ({ images, onEdit, onDelete }) => {
@@ -44,7 +44,7 @@ const ImageTable: React.FC<ImageTableProps> = ({ images, onEdit, onDelete }) => 
                 <button onClick={() => onEdit(img)} className="p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10 rounded-lg">
                   <span className="material-symbols-outlined text-lg">edit</span>
                 </button>
-                <button onClick={() => onDelete(img.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg">
+                <button onClick={() => onDelete(img.id, img.description)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg">
                   <span className="material-symbols-outlined text-lg">delete</span>
                 </button>
               </div>

@@ -1,24 +1,45 @@
 
 import { Type } from "@google/genai";
 import { getAiInstance } from "./geminiClient";
+import { supabase } from "./supabaseClient";
+import { storageService } from "./storageService";
+import { ReadingPractice } from "../types";
+import { audioBufferToWav } from "./audioUtils";
 
 export const readingService = {
-  async generateNextExercise(): Promise<{ title: string; text: string; imageUrl: string }> {
+  async generateNextExercise(): Promise<{ title: string; text: string; imageUrl: string; isGenerated: boolean }> {
+    // Tỷ lệ 30% lấy bài cũ từ kho để tối ưu tốc độ và chi phí
+    if (Math.random() < 0.3) {
+      const saved = await this.getRandomSavedExercise();
+      if (saved) {
+        console.log("Sử dụng bài đọc từ kho lưu trữ (Fast Load)");
+        return { 
+          title: saved.title, 
+          text: saved.text, 
+          imageUrl: saved.image_url, 
+          isGenerated: false // Đánh dấu là bài cũ từ kho
+        };
+      }
+    }
+
     const aiClient = getAiInstance();
     const fallbackImage = "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=1200&auto=format&fit=crop";
 
     if (!aiClient) {
+      const saved = await this.getRandomSavedExercise();
+      if (saved) return { title: saved.title, text: saved.text, imageUrl: saved.image_url, isGenerated: false };
       return {
-        title: "Bài học dự phòng",
-        text: "Mẹ đi chợ mua cá. Bé ở nhà học bài. Cả nhà đều vui vẻ.",
-        imageUrl: fallbackImage
+        title: "Mùa xuân về",
+        text: "Mùa xuân về, trăm hoa đua nở. Bé cùng mẹ đi chúc tết ông bà. Cả nhà ai cũng vui tươi.",
+        imageUrl: fallbackImage,
+        isGenerated: false
       };
     }
 
     try {
       const textResponse = await aiClient.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: "Tạo một bài tập đọc ngắn (khoảng 15-25 từ) cho học sinh tiểu học. Nội dung về thiên nhiên hoặc trường học. Trả về JSON bao gồm tiêu đề, văn bản và prompt tiếng Anh vẽ minh họa.",
+        contents: "Tạo một bài tập đọc ngắn (15-25 từ) cho học sinh lớp 1-2 Việt Nam. Chủ đề: gia đình, trường học hoặc thiên nhiên. Trả về JSON gồm title, text, và imagePrompt chi tiết bằng tiếng Anh.",
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -34,38 +55,131 @@ export const readingService = {
       });
       
       const content = JSON.parse(textResponse.text || '{}');
+      
       let finalImageUrl = fallbackImage;
-
       try {
-        const imageResult = await aiClient.models.generateContent({
+        const imageResponse = await aiClient.models.generateContent({
           model: 'gemini-2.5-flash-image',
           contents: {
-            parts: [{ text: `A vibrant digital illustration for kids: ${content.imagePrompt}. Storybook style.` }]
+            parts: [{ text: `A vibrant, friendly 3D cartoon illustration for children: ${content.imagePrompt}` }]
           },
           config: { imageConfig: { aspectRatio: "4:3" } }
         });
 
-        for (const part of imageResult.candidates[0].content.parts) {
-          if (part.inlineData) finalImageUrl = `data:image/png;base64,${part.inlineData.data}`;
+        for (const part of imageResponse.candidates[0].content.parts) {
+          if (part.inlineData) {
+            finalImageUrl = `data:image/png;base64,${part.inlineData.data}`;
+          }
         }
       } catch (imgErr) {
-        console.warn("Image gen failed", imgErr);
+        console.warn("AI Image generation failed, falling back to database or placeholder", imgErr);
+        const saved = await this.getRandomSavedExercise();
+        if (saved) return { title: content.title, text: content.text, imageUrl: saved.image_url, isGenerated: true };
       }
 
       return {
         title: content.title,
         text: content.text,
-        imageUrl: finalImageUrl
+        imageUrl: finalImageUrl,
+        isGenerated: true // Đánh dấu là bài mới do AI tạo
       };
     } catch (error) {
-      console.error("Generate Exercise Error:", error);
-      return { title: "Bài tập đọc", text: "Mẹ đi chợ mua cá. Bé ở nhà học bài.", imageUrl: fallbackImage };
+      console.error("Generate AI Exercise Error:", error);
+      const saved = await this.getRandomSavedExercise();
+      if (saved) return { title: saved.title, text: saved.text, imageUrl: saved.image_url, isGenerated: false };
+      return { 
+        title: "Bài tập đọc", 
+        text: "Mẹ đi chợ mua cá. Bé ở nhà học bài.", 
+        imageUrl: fallbackImage,
+        isGenerated: false 
+      };
     }
+  },
+
+  async saveExercise(title: string, text: string, imageUrl: string, audioBuffer?: AudioBuffer | null): Promise<boolean> {
+    try {
+      let finalImageUrl = imageUrl;
+      let finalAudioUrl = null;
+      
+      if (imageUrl.startsWith('data:')) {
+        const uploadedImg = await storageService.uploadReadingImage(imageUrl);
+        if (uploadedImg) finalImageUrl = uploadedImg;
+      }
+
+      if (audioBuffer) {
+        const wavBlob = audioBufferToWav(audioBuffer);
+        const uploadedAudio = await storageService.uploadReadingAudio(wavBlob);
+        if (uploadedAudio) finalAudioUrl = uploadedAudio;
+      }
+
+      const { error } = await supabase
+        .from('reading_practice')
+        .insert([{
+          title,
+          text,
+          image_url: finalImageUrl,
+          audio_url: finalAudioUrl
+        }]);
+      
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error("readingService.saveExercise Error:", error);
+      return false;
+    }
+  },
+
+  async getSavedExercises(): Promise<ReadingPractice[]> {
+    const { data, error } = await supabase
+      .from('reading_practice')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) return [];
+    return data;
+  },
+
+  async getRandomSavedExercise(): Promise<ReadingPractice | null> {
+    try {
+      const { data, error } = await supabase
+        .from('reading_practice')
+        .select('*');
+      
+      if (error || !data || data.length === 0) return null;
+      const randomIndex = Math.floor(Math.random() * data.length);
+      return data[randomIndex];
+    } catch {
+      return null;
+    }
+  },
+
+  async deleteExercise(id: string): Promise<void> {
+    // 1. Lấy thông tin bài tập trước khi xóa để có URL file
+    const { data: item, error: fetchError } = await supabase
+      .from('reading_practice')
+      .select('image_url, audio_url')
+      .eq('id', id)
+      .single();
+
+    if (!fetchError && item) {
+      // 2. Xóa các file vật lý trên Storage
+      if (item.image_url) {
+        await storageService.deleteFileFromUrl('reading-images', item.image_url);
+      }
+      if (item.audio_url) {
+        await storageService.deleteFileFromUrl('reading-audios', item.audio_url);
+      }
+    }
+
+    // 3. Xóa bản ghi trong Database
+    const { error } = await supabase
+      .from('reading_practice')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
   },
 
   async analyzePronunciation(audioBase64: string, targetText: string): Promise<any> {
     const aiClient = getAiInstance();
-    
     if (!aiClient) return null;
 
     try {
@@ -79,22 +193,7 @@ export const readingService = {
             },
           },
           {
-            text: `Bạn là một Chuyên gia Thính học và Giám khảo chấm thi Tiếng Việt cực kỳ nghiêm khắc. 
-            Văn bản mẫu: "${targetText}".
-            
-            NHIỆM VỤ:
-            1. Nghe thật kỹ tệp âm thanh. 
-            2. Phát hiện TẤT CẢ các lỗi phát âm: sai phụ âm (L/N, S/X, TR/CH, R/D/GI), sai dấu thanh, đọc thiếu từ, đọc thừa từ, hoặc đọc sai từ hoàn toàn.
-            3. Trả về accuracy chính xác dựa trên tỉ lệ từ đọc đúng hoàn hảo. Nếu đọc sai L/N hoặc dấu thanh, từ đó PHẢI bị coi là sai.
-            
-            YÊU CẦU JSON:
-            - score: từ 1-5 (5 là hoàn hảo).
-            - accuracy: 0-100 (tỉ lệ % thực tế).
-            - speed: "Chậm", "Vừa", "Nhanh".
-            - feedback: Nhận xét chi tiết các lỗi cụ thể bé đã mắc phải (ví dụ: "Bé còn lẫn lộn giữa L và N ở từ 'lúa'").
-            - actualTranscription: Chuỗi văn bản bé đã THỰC TẾ nói (kể cả những từ sai).
-            - wordComparison: Mảng các đối tượng so sánh từng từ theo thứ tự bài đọc:
-              { "target": "từ trong mẫu", "actual": "từ bé đã đọc", "status": "correct" | "wrong" | "missing" | "extra" }`
+            text: `NHIỆM VỤ: Chuyển âm thanh thành văn bản, so sánh với mẫu: "${targetText}", trả về JSON accuracy và feedback.`
           }
         ],
         config: {
@@ -104,7 +203,6 @@ export const readingService = {
             properties: {
               score: { type: Type.NUMBER },
               accuracy: { type: Type.NUMBER },
-              speed: { type: Type.STRING },
               feedback: { type: Type.STRING },
               actualTranscription: { type: Type.STRING },
               wordComparison: {
@@ -120,7 +218,7 @@ export const readingService = {
                 }
               }
             },
-            required: ["score", "accuracy", "speed", "feedback", "actualTranscription", "wordComparison"]
+            required: ["score", "accuracy", "feedback", "actualTranscription", "wordComparison"]
           }
         }
       });

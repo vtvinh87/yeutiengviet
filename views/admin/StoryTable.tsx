@@ -5,7 +5,7 @@ import { Story } from '../../types';
 interface StoryTableProps {
   stories: Story[];
   onEdit: (story: Story) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string, name: string) => void;
 }
 
 const StoryTable: React.FC<StoryTableProps> = ({ stories, onEdit, onDelete }) => {
@@ -62,7 +62,7 @@ const StoryTable: React.FC<StoryTableProps> = ({ stories, onEdit, onDelete }) =>
                   <span className="material-symbols-outlined text-xl">edit</span>
                 </button>
                 <button 
-                  onClick={() => onDelete(story.id)} 
+                  onClick={() => onDelete(story.id, story.title)} 
                   className="size-10 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all shadow-sm"
                   title="Xóa"
                 >

@@ -1,6 +1,7 @@
 
 import { Story, AdminImage } from "../types";
 import { supabase } from "./supabaseClient";
+import { storageService } from "./storageService";
 
 export const IMAGE_KEYS = {
   AUTH_HERO: 'AUTH_HERO',
@@ -82,6 +83,28 @@ export const dataService = {
   },
 
   async deleteStory(id: string) {
+    // 1. Lấy thông tin story trước khi xóa để có URL file
+    const { data: item, error: fetchError } = await supabase
+      .from('stories')
+      .select('image, audio_url')
+      .eq('id', id)
+      .single();
+
+    if (!fetchError && item) {
+      // 2. Xóa các file vật lý trên Storage nếu chúng thuộc hệ thống lưu trữ của mình
+      if (item.image && item.image.includes('supabase.co')) {
+        // Tùy vào việc story image được upload vào bucket nào, mặc định thử bucket 'admin-images' hoặc bucket chứa story media
+        // Nếu không chắc chắn bucket, ta có thể bỏ qua việc xóa ảnh nếu nó dùng chung
+        // Tuy nhiên, nếu ảnh được upload riêng cho story, hãy xóa nó.
+        await storageService.deleteFileFromUrl('admin-images', item.image);
+      }
+      
+      if (item.audio_url) {
+        await storageService.deleteFileFromUrl('story-audios', item.audio_url);
+      }
+    }
+
+    // 3. Xóa bản ghi trong Database
     const { error } = await supabase.from('stories').delete().eq('id', id);
     if (error) throw error;
   },
@@ -123,6 +146,13 @@ export const dataService = {
   },
 
   async deleteImage(id: string) {
+    // 1. Lấy thông tin trước khi xóa
+    const { data: item } = await supabase.from('admin_images').select('url').eq('id', id).single();
+    if (item && item.url) {
+      await storageService.deleteFileFromUrl('admin-images', item.url);
+    }
+
+    // 2. Xóa DB
     const { error } = await supabase.from('admin_images').delete().eq('id', id);
     if (error) throw error;
   },

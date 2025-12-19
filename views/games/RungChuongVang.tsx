@@ -29,7 +29,8 @@ const RungChuongVang: React.FC<RungChuongVangProps> = ({ setView, user, onAwardE
   const [isRinging, setIsRinging] = useState(false);
   const [isPreloading, setIsPreloading] = useState(false);
   
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  // Fix: Replaced NodeJS.Timeout with any because the application runs in a browser environment where setInterval returns a number
+  const timerRef = useRef<any>(null);
   const TOTAL_QUESTIONS = 10;
 
   // Hàm gọi AI tạo câu hỏi
@@ -212,7 +213,7 @@ const RungChuongVang: React.FC<RungChuongVangProps> = ({ setView, user, onAwardE
 
           <button 
             onClick={startGame}
-            className="h-16 px-12 bg-primary hover:bg-primary-hover text-[#102216] font-black rounded-full shadow-xl shadow-primary/30 transition-all hover:scale-105 active:scale-95 text-xl flex items-center gap-3 z-10"
+            className="h-16 px-12 bg-primary text-[#102216] font-black rounded-full shadow-xl shadow-primary/30 transition-all hover:scale-105 active:scale-95 text-xl flex items-center gap-3 z-10"
           >
             <span className="material-symbols-outlined filled">play_arrow</span>
             Vào thi ngay
