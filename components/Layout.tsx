@@ -163,7 +163,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, isDarkMo
               <span className="material-symbols-outlined text-primary filled">school</span>
               <span className="font-bold tracking-tight">Yêu Tiếng Việt</span>
             </div>
-            <p className="text-sm text-gray-500">© 2024 Dự án Giáo dục Sáng tạo cho học sinh tiểu học Việt Nam.</p>
+            <p className="text-sm text-gray-500">© Mường Thín 2025</p>
           </div>
         </footer>
       )}
