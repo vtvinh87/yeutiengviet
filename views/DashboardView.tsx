@@ -26,6 +26,11 @@ const DashboardView: React.FC<DashboardViewProps> = ({ setView, user }) => {
     fetchImages();
   }, []);
 
+  // Tính toán dữ liệu thực tế cho các card stats
+  const expInCurrentLevel = user.exp % 100;
+  const levelStage = user.level <= 5 ? 'Mầm non xanh' : user.level <= 15 ? 'Chồi non khỏe' : 'Cây tri thức vươn cao';
+  const studyStreak = user.streak || 1;
+
   return (
     <div className="flex flex-col gap-8 animate-in fade-in duration-500">
       {/* Admin Quick Access Banner */}
@@ -91,7 +96,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ setView, user }) => {
             <h3 className="text-lg font-black">Chuỗi học tập</h3>
           </div>
           <div className="flex items-end gap-2">
-            <span className="text-5xl font-black text-text-main dark:text-primary">3</span>
+            <span className="text-5xl font-black text-text-main dark:text-primary">{studyStreak}</span>
             <span className="text-lg font-bold text-gray-600 dark:text-gray-300 mb-1">ngày</span>
           </div>
           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-2">Giỏi lắm! Đừng dừng lại nhé.</p>
@@ -105,13 +110,13 @@ const DashboardView: React.FC<DashboardViewProps> = ({ setView, user }) => {
               </div>
               <div>
                 <h3 className="text-lg font-black">Cây tri thức</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Level 2: Mầm non xanh</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Level {user.level}: {levelStage}</p>
               </div>
             </div>
-            <span className="text-lg font-black text-blue-700 dark:text-blue-300">75/100 XP</span>
+            <span className="text-lg font-black text-blue-700 dark:text-blue-300">{expInCurrentLevel}/100 XP</span>
           </div>
           <div className="relative w-full h-8 bg-white dark:bg-black/20 rounded-full overflow-hidden shadow-inner p-1">
-            <div className="h-full bg-primary rounded-full flex items-center justify-end pr-3 transition-all duration-1000" style={{width: '75%'}}>
+            <div className="h-full bg-primary rounded-full flex items-center justify-end pr-3 transition-all duration-1000" style={{width: `${expInCurrentLevel}%`}}>
               <div className="size-3 bg-white/50 rounded-full animate-pulse"></div>
             </div>
           </div>

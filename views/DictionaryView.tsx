@@ -49,47 +49,53 @@ const DictionaryView: React.FC<DictionaryViewProps> = ({ onAwardExp }) => {
 
   return (
     <div className="flex flex-col gap-8 animate-in slide-in-from-bottom-4 duration-500 max-w-7xl mx-auto w-full">
+      {/* Search Hero Section - Styled to match screenshot */}
       <section 
-        className="w-full relative rounded-3xl overflow-hidden min-h-[360px] flex flex-col items-center justify-center p-8 text-center bg-cover bg-center shadow-2xl"
+        className="w-full relative rounded-[2.5rem] overflow-hidden min-h-[480px] flex flex-col items-center justify-center p-8 md:p-12 text-center bg-cover bg-center shadow-2xl"
         style={{
-          backgroundImage: 'linear-gradient(rgba(16, 34, 22, 0.7), rgba(16, 34, 22, 0.9)), url("https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=1200&auto=format&fit=crop")',
+          backgroundImage: 'linear-gradient(rgba(16, 34, 22, 0.75), rgba(16, 34, 22, 0.95)), url("https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=1200&auto=format&fit=crop")',
         }}
       >
-        <div className="z-10 flex flex-col items-center w-full">
-          <h1 className="text-white text-4xl md:text-5xl font-black mb-4 tracking-tight">
+        <div className="z-10 flex flex-col items-center w-full max-w-4xl">
+          <h1 className="text-white text-4xl md:text-6xl font-black mb-6 tracking-tight animate-in fade-in slide-in-from-top-4 duration-700">
             Em muốn tìm hiểu từ gì?
           </h1>
-          <h2 className="text-white/80 text-lg md:text-xl font-medium mb-10 max-w-2xl">
+          <h2 className="text-white/80 text-lg md:text-2xl font-medium mb-12 max-w-3xl animate-in fade-in slide-in-from-top-4 duration-1000 delay-200">
             Nhập từ vựng em muốn tra cứu hoặc nhấn vào micro để nói nhé!
           </h2>
-          <form onSubmit={handleSearch} className="flex flex-col md:flex-row w-full max-w-[640px] gap-3">
-            <div className="flex w-full flex-1 items-stretch rounded-full bg-white dark:bg-[#1a3322] p-1.5 shadow-2xl ring-4 ring-primary/10">
-              <div className="flex items-center justify-center pl-5 pr-2">
-                <span className="material-symbols-outlined text-primary text-2xl">search</span>
+          
+          <form onSubmit={handleSearch} className="flex flex-col md:flex-row w-full max-w-[760px] gap-4 animate-in fade-in zoom-in duration-700 delay-500">
+            <div className="flex w-full flex-1 items-stretch rounded-full bg-white p-2 shadow-2xl group focus-within:ring-4 focus-within:ring-primary/20 transition-all">
+              <div className="flex items-center justify-center pl-6 pr-3">
+                <span className="material-symbols-outlined text-primary text-3xl">search</span>
               </div>
               <input 
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="w-full bg-transparent border-none focus:ring-0 text-text-main dark:text-white placeholder:text-gray-400 text-lg py-3 font-medium" 
+                className="w-full bg-transparent border-none focus:ring-0 text-[#0d1b12] placeholder:text-gray-400 text-xl py-4 font-bold" 
                 placeholder="Ví dụ: Thiên hà, Cây cối, Học tập..." 
               />
-              <button type="button" className="flex items-center justify-center size-12 rounded-full bg-gray-100 dark:bg-white/5 hover:bg-primary/20 text-text-main dark:text-white transition-all active:scale-90">
-                <span className="material-symbols-outlined">mic</span>
+              <button 
+                type="button" 
+                className="flex items-center justify-center size-14 rounded-full bg-gray-100 hover:bg-primary/20 text-[#0d1b12] transition-all active:scale-90"
+              >
+                <span className="material-symbols-outlined text-2xl">mic</span>
               </button>
             </div>
             <button 
               type="submit"
               disabled={loading}
-              className="flex items-center justify-center rounded-full h-15 px-10 bg-primary hover:bg-primary-hover text-[#0d1b12] font-black text-lg shadow-xl shadow-primary/30 transition-all active:scale-95 disabled:opacity-50"
+              className="flex items-center justify-center rounded-full h-18 px-12 bg-primary hover:bg-primary-hover text-[#0d1b12] font-black text-xl shadow-[0_0_30px_rgba(19,236,91,0.4)] transition-all active:scale-95 disabled:opacity-50"
             >
               {loading ? (
-                <div className="size-6 border-3 border-[#0d1b12]/30 border-t-[#0d1b12] rounded-full animate-spin"></div>
+                <div className="size-8 border-4 border-[#0d1b12]/30 border-t-[#0d1b12] rounded-full animate-spin"></div>
               ) : 'Tra từ'}
             </button>
           </form>
         </div>
       </section>
 
+      {/* Results Section */}
       {result && (
         <div className="animate-in fade-in slide-in-from-bottom-10 duration-700">
           <div className="flex items-center gap-3 mb-8 px-2">
@@ -141,7 +147,7 @@ const DictionaryView: React.FC<DictionaryViewProps> = ({ onAwardExp }) => {
                   </div>
                 </div>
                 
-                <div className="flex flex-[2] relative group">
+                <div className="flex flex-[2] relative group min-h-[300px]">
                   <div className="absolute inset-0 bg-primary/20 rounded-[2rem] transform rotate-3 group-hover:rotate-1 transition-transform"></div>
                   <div 
                     className="relative w-full aspect-square rounded-[2rem] overflow-hidden border-8 border-white dark:border-[#2d4234] shadow-2xl bg-cover bg-center transition-all group-hover:scale-[1.02]"

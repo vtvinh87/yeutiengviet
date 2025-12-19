@@ -32,30 +32,9 @@ export const dictionaryService = {
 
       const data = JSON.parse(response.text || '{}');
 
-      // 2. Generate a kid-friendly illustration
-      let finalImageUrl = `https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=600&auto=format&fit=crop`;
-      
-      try {
-        const imageResult = await ai.models.generateContent({
-          model: 'gemini-2.5-flash-image',
-          contents: {
-            parts: [{ text: `A kid-friendly, colorful, high-quality digital illustration of: ${data.imagePrompt}. Storybook art style, clean lines, vibrant colors, educational vibe.` }]
-          },
-          config: {
-            imageConfig: {
-              aspectRatio: "1:1"
-            }
-          }
-        });
-
-        for (const part of imageResult.candidates[0].content.parts) {
-          if (part.inlineData) {
-            finalImageUrl = `data:image/png;base64,${part.inlineData.data}`;
-          }
-        }
-      } catch (err) {
-        console.warn("Could not generate AI image for dictionary, using fallback.", err);
-      }
+      // 2. Use a seeded placeholder instead of AI Image Generation to avoid API restrictions
+      // This ensures a unique, high-quality educational image for every word without needing extra API calls.
+      const finalImageUrl = `https://picsum.photos/seed/${encodeURIComponent(word + "school")}/600/600`;
 
       return {
         ...data,
@@ -63,7 +42,7 @@ export const dictionaryService = {
       };
     } catch (error) {
       console.error("Dictionary Service Error:", error);
-      // Fallback response so the app doesn't crash
+      // Fallback response
       return {
         word: word,
         type: "Từ vựng",

@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { LiveTeacherSession } from '../services/liveService';
 
 const LiveView: React.FC = () => {
-  const [status, setStatus] = useState<'idle' | 'connecting' | 'open' | 'closed' | 'error'>('idle');
+  // Fix: Added 'unauthorized' to the status type to match the expected signature in LiveSessionHandlers.onStatusChange
+  const [status, setStatus] = useState<'idle' | 'connecting' | 'open' | 'closed' | 'error' | 'unauthorized'>('idle');
   const [transcriptions, setTranscriptions] = useState<{ text: string, isUser: boolean }[]>([]);
   const [showConfirmEnd, setShowConfirmEnd] = useState(false);
   
@@ -106,6 +107,8 @@ const LiveView: React.FC = () => {
               {status === 'connecting' && "Cô đang kết nối, bé chờ xíu nha..."}
               {status === 'open' && "Cô đang lắng nghe bé đây!"}
               {status === 'closed' && "Hẹn gặp lại bé lần sau nhé!"}
+              {/* Fix: Added messages for error and unauthorized statuses for better UX */}
+              {(status === 'error' || status === 'unauthorized') && "Ối! Gặp lỗi kết nối rồi. Bé hãy kiểm tra lại mạng hoặc khóa API nhé!"}
             </p>
 
             <div className="flex justify-center">

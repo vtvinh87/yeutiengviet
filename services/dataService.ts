@@ -46,7 +46,7 @@ export const dataService = {
         summary: item.summary,
         duration: item.duration,
         image: item.image,
-        audioUrl: item.audio_url // Ánh xạ từ snake_case của DB sang camelCase của App
+        audioUrl: item.audio_url
       }));
     } catch (err) {
       console.error("Lỗi getStories:", err);
@@ -55,23 +55,19 @@ export const dataService = {
   },
 
   async saveStory(story: Story) {
-    // 1. Chuẩn bị object dữ liệu với tên cột chính xác trong Database (snake_case)
     const dbData: any = {
       title: story.title,
       content: story.content,
       summary: story.summary,
       duration: story.duration,
       image: story.image,
-      audio_url: story.audioUrl // Đảm bảo trùng khớp với cột audio_url trong SQL
+      audio_url: story.audioUrl
     };
 
-    // 2. Xử lý ID: Nếu là truyện mới (id là 'new' hoặc undefined), không gửi ID để Supabase tự tạo UUID.
-    // Nếu ID là một UUID hợp lệ, gửi đi để Update.
+    // Chỉ gửi ID nếu nó là một UUID hợp lệ (độ dài > 10)
     if (story.id && story.id !== 'new' && story.id.length > 10) {
       dbData.id = story.id;
     }
-
-    console.log("Đang lưu dữ liệu vào Supabase:", dbData);
 
     const { data, error } = await supabase
       .from('stories')
@@ -79,10 +75,9 @@ export const dataService = {
       .select();
 
     if (error) {
-      console.error("Chi tiết lỗi lưu Database:", error);
+      console.error("Lỗi lưu Story:", error);
       throw error;
     }
-    
     return data;
   },
 
@@ -92,17 +87,44 @@ export const dataService = {
   },
 
   async getImages(): Promise<AdminImage[]> {
-    const { data, error } = await supabase.from('admin_images').select('*');
+    const { data, error } = await supabase
+      .from('admin_images')
+      .select('*')
+      .order('created_at', { ascending: false });
     if (error || !data) return [];
     return data;
   },
 
   async saveImage(image: AdminImage) {
-    await supabase.from('admin_images').upsert([image]);
+    const dbData: any = {
+      url: image.url,
+      description: image.description,
+      category: image.category || 'System',
+      key: image.key
+    };
+
+    // Chỉ gửi ID nếu nó là một UUID hợp lệ
+    if (image.id && image.id !== 'new' && image.id.length > 10) {
+      dbData.id = image.id;
+    }
+
+    console.log("Đang đồng bộ Image với Database:", dbData);
+
+    const { data, error } = await supabase
+      .from('admin_images')
+      .upsert([dbData])
+      .select();
+
+    if (error) {
+      console.error("Lỗi lưu Image vào Database:", error);
+      throw error;
+    }
+    return data;
   },
 
   async deleteImage(id: string) {
-    await supabase.from('admin_images').delete().eq('id', id);
+    const { error } = await supabase.from('admin_images').delete().eq('id', id);
+    if (error) throw error;
   },
 
   async getSystemImage(key: string, fallback: string): Promise<string> {

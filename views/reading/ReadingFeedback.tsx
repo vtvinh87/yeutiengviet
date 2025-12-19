@@ -16,6 +16,14 @@ interface ReadingFeedbackProps {
 }
 
 const ReadingFeedback: React.FC<ReadingFeedbackProps> = ({ score, accuracy, feedback, words, canGoNext, onNext }) => {
+  // Normalize accuracy: if it's a decimal (e.g., 0.9), convert to percentage (90)
+  // This fixes the issue where 90% was displaying as 0.9%
+  const displayAccuracy = accuracy <= 1 ? accuracy * 100 : accuracy;
+  
+  // Normalize score: if it's > 5 (e.g., 88), it's likely a percentage out of 100, scale it to 5
+  const normalizedScore = score > 5 ? (score / 20) : score;
+  const displayScore = score > 5 ? Math.round(score) : score.toFixed(1);
+
   return (
     <section className="animate-in fade-in slide-in-from-top-4 duration-700 border-t border-dashed border-gray-200 dark:border-white/10 pt-8 mt-4">
       <div className="flex items-center justify-between mb-6">
@@ -37,12 +45,12 @@ const ReadingFeedback: React.FC<ReadingFeedbackProps> = ({ score, accuracy, feed
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="flex-shrink-0 min-w-[240px] flex flex-col gap-4 border-b lg:border-b-0 lg:border-r border-gray-100 dark:border-white/5 pb-6 lg:pb-0 lg:pr-6">
             <div className="flex items-baseline gap-2">
-              <span className="text-6xl font-black tracking-tighter">{score}</span>
+              <span className="text-6xl font-black tracking-tighter">{displayScore}</span>
               <span className="text-lg text-gray-500 font-medium">/ 5</span>
             </div>
             <div className="flex gap-1 text-primary">
               {[...Array(5)].map((_, i) => (
-                <span key={i} className={`material-symbols-outlined ${i < Math.floor(score) ? 'filled' : ''}`}>
+                <span key={i} className={`material-symbols-outlined ${i < Math.floor(normalizedScore) ? 'filled' : ''}`}>
                   star
                 </span>
               ))}
@@ -50,10 +58,10 @@ const ReadingFeedback: React.FC<ReadingFeedbackProps> = ({ score, accuracy, feed
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between text-sm">
                 <span>Độ chính xác</span>
-                <span className="font-bold text-primary">{accuracy}%</span>
+                <span className="font-bold text-primary">{displayAccuracy.toFixed(1)}%</span>
               </div>
               <div className="h-2 w-full bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full bg-primary" style={{width: `${accuracy}%`}}></div>
+                <div className="h-full bg-primary" style={{width: `${displayAccuracy}%`}}></div>
               </div>
             </div>
           </div>

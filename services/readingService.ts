@@ -72,6 +72,7 @@ export const readingService = {
             text: `Bạn là một Chuyên gia Thính học và Ngôn ngữ học Tiếng Việt. 
             Phân tích giọng đọc dựa trên văn bản: "${targetText}".
             Kiểm tra kỹ các lỗi L/N, R/D, TR/CH, S/X và dấu thanh.
+            Yêu cầu: score là số từ 1 đến 5, accuracy là số từ 0 đến 100 đại diện cho phần trăm chính xác.
             Trả về JSON.`
           }
         ],

@@ -47,14 +47,79 @@ interface GamesViewProps {
   setView: (view: AppView, gameId?: string) => void;
 }
 
+/**
+ * Component con xử lý việc tải ảnh bất đồng bộ từ Supabase
+ */
+const GameCard: React.FC<{ game: Game; onClick: () => void }> = ({ game, onClick }) => {
+  const [imgUrl, setImgUrl] = useState<string>('');
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadImg = async () => {
+      // Gọi service để lấy URL ảnh từ DB hoặc fallback
+      const url = await dataService.getSystemImage(game.imageKey, 'https://images.unsplash.com/photo-1610484826967-09c5720778c7?q=80&w=800&auto=format&fit=crop');
+      if (isMounted) {
+        setImgUrl(url);
+      }
+    };
+    loadImg();
+    return () => { isMounted = false; };
+  }, [game.imageKey]);
+
+  return (
+    <div 
+      className="group bg-white dark:bg-surface-dark rounded-2xl p-3 border border-[#e7f3eb] dark:border-[#2a4030] shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col h-full"
+    >
+      <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden mb-4 bg-gray-100 dark:bg-black/20">
+        {/* Lớp nền placeholder trong khi chờ ảnh tải */}
+        <div className={`absolute inset-0 bg-primary/5 animate-pulse transition-opacity duration-500 ${isLoaded ? 'opacity-0' : 'opacity-100'}`} />
+        
+        <img 
+          src={imgUrl} 
+          alt={game.title}
+          onLoad={() => setIsLoaded(true)}
+          className={`absolute inset-0 w-full h-full object-cover transform group-hover:scale-110 transition-all duration-700 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+        />
+
+        <div className="absolute top-3 right-3 bg-white/90 dark:bg-black/60 backdrop-blur px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm z-10">
+          <span className={`material-symbols-outlined text-sm ${game.difficulty === 'Dễ' ? 'text-yellow-500' : 'text-orange-500'}`}>
+            {game.difficulty === 'Dễ' ? 'star' : 'star_half'}
+          </span> 
+          {game.difficulty}
+        </div>
+      </div>
+
+      <div className="flex flex-col flex-1 px-2">
+        <div className="mb-2">
+          <span className={`text-xs font-bold uppercase tracking-wider ${game.categoryColor}`}>
+            {game.category}
+          </span>
+        </div>
+        <h4 className="text-xl font-bold mb-1">{game.title}</h4>
+        <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-4">
+          {game.description}
+        </p>
+        <div className="mt-auto">
+          <button 
+            onClick={onClick}
+            className="w-full h-12 rounded-full bg-white dark:bg-surface-dark border-2 border-primary text-text-main dark:text-white font-bold group-hover:bg-primary group-hover:text-[#0d1b12] transition-colors flex items-center justify-center gap-2"
+          >
+            <span className="material-symbols-outlined">play_arrow</span> Chơi ngay
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const GamesView: React.FC<GamesViewProps> = ({ setView }) => {
   const [activeFilter, setActiveFilter] = useState('Tất cả');
   const [heroImage, setHeroImage] = useState('');
 
   useEffect(() => {
-    // Fix: Wait for getSystemImage promise to resolve before updating state
     const loadHero = async () => {
-      const url = await dataService.getSystemImage(IMAGE_KEYS.GAMES_HERO, '');
+      const url = await dataService.getSystemImage(IMAGE_KEYS.GAMES_HERO, 'https://images.unsplash.com/photo-1610484826967-09c5720778c7?q=80&w=1200&auto=format&fit=crop');
       setHeroImage(url);
     };
     loadHero();
@@ -92,7 +157,7 @@ const GamesView: React.FC<GamesViewProps> = ({ setView }) => {
             </div>
           </div>
           <div 
-            className="w-full lg:w-1/2 aspect-video lg:aspect-auto lg:h-[320px] rounded-2xl bg-cover bg-center shadow-lg transform rotate-1 hover:rotate-0 transition-transform duration-500"
+            className="w-full lg:w-1/2 aspect-video lg:aspect-auto lg:h-[320px] rounded-2xl bg-cover bg-center shadow-lg transform rotate-1 hover:rotate-0 transition-transform duration-500 border-4 border-white dark:border-[#2d4234]"
             style={{ backgroundImage: `url("${heroImage}")` }}
           />
         </div>
@@ -160,45 +225,14 @@ const GamesView: React.FC<GamesViewProps> = ({ setView }) => {
           </div>
         </div>
 
-        {/* Game Cards Grid */}
+        {/* Game Cards Grid - Bây giờ sử dụng GameCard component */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {MOCK_GAMES.filter(g => activeFilter === 'Tất cả' || g.category === activeFilter).map((game) => (
-            <div 
-              key={game.id}
-              className="group bg-white dark:bg-surface-dark rounded-2xl p-3 border border-[#e7f3eb] dark:border-[#2a4030] shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col h-full"
-            >
-              <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden mb-4">
-                <div 
-                  className="absolute inset-0 bg-cover bg-center transform group-hover:scale-110 transition-transform duration-500"
-                  style={{ backgroundImage: `url("${dataService.getSystemImage(game.imageKey, '')}")` }}
-                />
-                <div className="absolute top-3 right-3 bg-white/90 dark:bg-black/60 backdrop-blur px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-sm">
-                  <span className={`material-symbols-outlined text-sm ${game.difficulty === 'Dễ' ? 'text-yellow-500' : 'text-orange-500'}`}>
-                    {game.difficulty === 'Dễ' ? 'star' : 'star_half'}
-                  </span> 
-                  {game.difficulty}
-                </div>
-              </div>
-              <div className="flex flex-col flex-1 px-2">
-                <div className="mb-2">
-                  <span className={`text-xs font-bold uppercase tracking-wider ${game.categoryColor}`}>
-                    {game.category}
-                  </span>
-                </div>
-                <h4 className="text-xl font-bold mb-1">{game.title}</h4>
-                <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-4">
-                  {game.description}
-                </p>
-                <div className="mt-auto">
-                  <button 
-                    onClick={() => setView('game-detail', game.id)}
-                    className="w-full h-12 rounded-full bg-white dark:bg-surface-dark border-2 border-primary text-text-main dark:text-white font-bold group-hover:bg-primary group-hover:text-[#0d1b12] transition-colors flex items-center justify-center gap-2"
-                  >
-                    <span className="material-symbols-outlined">play_arrow</span> Chơi ngay
-                  </button>
-                </div>
-              </div>
-            </div>
+            <GameCard 
+              key={game.id} 
+              game={game} 
+              onClick={() => setView('game-detail', game.id)} 
+            />
           ))}
         </div>
       </div>

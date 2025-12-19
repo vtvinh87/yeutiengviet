@@ -25,10 +25,13 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
   // Security check
   if (user.role !== 'admin') {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
-        <span className="material-symbols-outlined text-6xl text-red-500">lock</span>
-        <h2 className="text-2xl font-black">Truy cập bị từ chối</h2>
-        <p className="text-gray-500">Chỉ giáo viên quản trị mới có quyền truy cập khu vực này.</p>
+      <div className="flex flex-col items-center justify-center py-20 gap-4 text-center animate-in fade-in zoom-in">
+        <div className="size-24 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 mb-4">
+          <span className="material-symbols-outlined text-6xl">lock</span>
+        </div>
+        <h2 className="text-3xl font-black">Truy cập bị từ chối</h2>
+        <p className="text-gray-500 max-w-sm">Chỉ giáo viên quản trị mới có quyền truy cập khu vực này để bảo mật dữ liệu của các bé.</p>
+        <button onClick={() => window.location.href = '/'} className="mt-4 px-8 py-3 bg-primary text-text-main font-bold rounded-full">Quay lại trang chủ</button>
       </div>
     );
   }
@@ -67,13 +70,16 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
       }
       await refreshData();
       setIsModalOpen(false);
+    } catch (error: any) {
+      console.error("Chi tiết lỗi khi lưu:", error);
+      alert(`Lỗi hệ thống: ${error.message || "Không thể đồng bộ dữ liệu. Vui lòng kiểm tra lại bảng trong Database!"}`);
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa?")) return;
+    if (!confirm("Bạn có chắc chắn muốn xóa mục này khỏi hệ thống không?")) return;
     setLoading(true);
     try {
       if (activeTab === 'users') {
@@ -95,49 +101,59 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
   };
 
   return (
-    <div className="flex flex-col gap-8 animate-in fade-in duration-500 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-black">Bảng quản trị</h2>
-          <p className="text-gray-500">Quản lý nội dung và người dùng trên hệ thống Supabase.</p>
+    <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-7xl mx-auto w-full pb-20">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+            <span className="material-symbols-outlined text-4xl filled">admin_panel_settings</span>
+          </div>
+          <div>
+            <h2 className="text-3xl font-black tracking-tight">Hệ thống Quản trị</h2>
+            <p className="text-gray-500 font-medium italic">Xin chào, Cô giáo {user.name}</p>
+          </div>
         </div>
         <button 
           onClick={() => openModal()}
-          className="flex items-center gap-2 px-6 py-3 bg-primary text-text-main font-bold rounded-full shadow-lg hover:bg-primary-hover transition-all"
+          className="flex items-center gap-2 px-8 h-14 bg-primary text-[#102216] font-black rounded-full shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
         >
-          <span className="material-symbols-outlined">add</span>
-          Thêm mới
+          <span className="material-symbols-outlined">add_circle</span>
+          Thêm mới dữ liệu
         </button>
       </div>
 
-      <div className="flex gap-4 border-b border-gray-200 dark:border-white/10">
+      <div className="flex p-1 bg-white/50 dark:bg-white/5 rounded-2xl border border-gray-100 dark:border-white/10 w-fit">
         {[
-          { id: 'users', label: 'Người dùng', icon: 'group' },
+          { id: 'users', label: 'Học sinh', icon: 'person' },
           { id: 'stories', label: 'Truyện kể', icon: 'auto_stories' },
-          { id: 'images', label: 'Hình ảnh', icon: 'image' }
+          { id: 'images', label: 'Hình ảnh', icon: 'collections' }
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`flex items-center gap-2 px-6 py-3 text-sm font-bold transition-all border-b-2 ${
-              activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'
+            className={`flex items-center gap-2 px-8 py-3.5 text-sm font-black transition-all rounded-xl ${
+              activeTab === tab.id 
+                ? 'bg-white dark:bg-primary text-primary dark:text-[#102216] shadow-md' 
+                : 'text-gray-500 hover:text-gray-700 dark:hover:text-white'
             }`}
           >
-            <span className="material-symbols-outlined text-lg">{tab.icon}</span>
+            <span className="material-symbols-outlined text-xl">{tab.icon}</span>
             {tab.label}
           </button>
         ))}
       </div>
 
-      <div className="bg-white dark:bg-surface-dark rounded-2xl shadow-soft overflow-hidden border border-gray-100 dark:border-white/10 min-h-[300px] relative">
+      <div className="bg-white dark:bg-surface-dark rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-white/10 min-h-[400px] relative">
         {loading && (
-          <div className="absolute inset-0 bg-white/50 dark:bg-black/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
-             <div className="size-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+          <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center gap-4">
+             <div className="size-14 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+             <p className="text-primary font-black animate-pulse">Đang cập nhật...</p>
           </div>
         )}
-        {activeTab === 'users' && <UserTable users={users} onEdit={openModal} onDelete={handleDelete} />}
-        {activeTab === 'stories' && <StoryTable stories={stories} onEdit={openModal} onDelete={handleDelete} />}
-        {activeTab === 'images' && <ImageTable images={images} onEdit={openModal} onDelete={handleDelete} />}
+        <div className="p-2 overflow-x-auto custom-scrollbar">
+          {activeTab === 'users' && <UserTable users={users} onEdit={openModal} onDelete={handleDelete} />}
+          {activeTab === 'stories' && <StoryTable stories={stories} onEdit={openModal} onDelete={handleDelete} />}
+          {activeTab === 'images' && <ImageTable images={images} onEdit={openModal} onDelete={handleDelete} />}
+        </div>
       </div>
 
       {isModalOpen && (

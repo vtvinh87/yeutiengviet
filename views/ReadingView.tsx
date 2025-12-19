@@ -19,12 +19,7 @@ interface ReadingViewProps {
 }
 
 const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
-  const [currentExercise, setCurrentExercise] = useState<ReadingExercise>({
-    title: "Buổi sáng trên bản",
-    text: "Hôm nay trời đẹp, chim hót líu lo trên cành. Mặt trời mọc sau dãy núi, tỏa ánh nắng vàng rực rỡ xuống bản làng.",
-    imageUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuBZ-Oq1a9_rr8cVQlwENRal6bX4ETKFztilOc5vBUwGaN7hJSGUwOVv9uqIGeSB6OKSLY70YhJWu058DGaidAmIVmc4my4ka-Iem7_ntVgMStLBJ2Ft89zr-kCAtZgVtZm-dBJFYsSheQH-obxuocOojhIuTRi1xZC3Gi88zzZ-8VS3j-ocWCOT1BbtDOe-6J3qQFphp6w8UbFJuBwTKm0FPUEh4kEMO0sSaoHL9oCVe63X_Rg9DWDvUeQw0_5jjqp11FTABaF6jA"
-  });
-
+  const [currentExercise, setCurrentExercise] = useState<ReadingExercise | null>(null);
   const [preloadedNext, setPreloadedNext] = useState<ReadingExercise | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -32,6 +27,7 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
   const [feedbackData, setFeedbackData] = useState<any>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [hasStartedPreload, setHasStartedPreload] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -39,10 +35,49 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
 
   useEffect(() => {
     audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+    
+    // Auto generate first exercise on mount
+    const initExercise = async () => {
+      setIsInitialLoading(true);
+      try {
+        const content = await readingService.generateNextExercise();
+        const audio = await aiTeacherService.generateSpeechBuffer(content.text, audioCtxRef.current!);
+        
+        const firstEx = {
+          title: content.title,
+          text: content.text,
+          imageUrl: `https://picsum.photos/seed/${encodeURIComponent(content.title)}/800/600`,
+          audioBuffer: audio
+        };
+        setCurrentExercise(firstEx);
+        
+        // Auto play narration if audio exists
+        if (audio) {
+          playBuffer(audio);
+        }
+      } catch (error) {
+        console.error("Initial generation error:", error);
+      } finally {
+        setIsInitialLoading(false);
+      }
+    };
+
+    initExercise();
+
     return () => {
       if (audioCtxRef.current) audioCtxRef.current.close();
     };
   }, []);
+
+  const playBuffer = (buffer: AudioBuffer) => {
+    if (!audioCtxRef.current) return;
+    setIsSpeaking(true);
+    const source = audioCtxRef.current.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioCtxRef.current.destination);
+    source.onended = () => setIsSpeaking(false);
+    source.start();
+  };
 
   const preloadNextContent = async () => {
     if (hasStartedPreload || preloadedNext) return;
@@ -64,15 +99,11 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
   };
 
   const handleSpeakSample = async () => {
-    if (!audioCtxRef.current) return;
+    if (!audioCtxRef.current || !currentExercise) return;
     
     setIsSpeaking(true);
     if (currentExercise.audioBuffer) {
-      const source = audioCtxRef.current.createBufferSource();
-      source.buffer = currentExercise.audioBuffer;
-      source.connect(audioCtxRef.current.destination);
-      source.onended = () => setIsSpeaking(false);
-      source.start();
+      playBuffer(currentExercise.audioBuffer);
     } else {
       await aiTeacherService.speak(currentExercise.text);
       setIsSpeaking(false);
@@ -99,11 +130,12 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
           const base64String = (reader.result as string).split(',')[1];
           setIsProcessing(true);
           try {
-            const result = await readingService.analyzePronunciation(base64String, currentExercise.text);
-            setFeedbackData(result);
-            setShowFeedback(true);
-            // Thưởng điểm sau khi hoàn thành bài đọc
-            if (onAwardExp) onAwardExp(20);
+            if (currentExercise) {
+              const result = await readingService.analyzePronunciation(base64String, currentExercise.text);
+              setFeedbackData(result);
+              setShowFeedback(true);
+              if (onAwardExp) onAwardExp(20);
+            }
           } catch (error) {
             console.error("Analysis error:", error);
             alert("Cô không thể phân tích được giọng đọc của bé. Bé hãy thử lại nhé!");
@@ -135,9 +167,32 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
       setHasStartedPreload(false);
       setShowFeedback(false);
       setFeedbackData(null);
+      
+      // Auto play the preloaded audio
+      if (preloadedNext.audioBuffer) {
+        playBuffer(preloadedNext.audioBuffer);
+      }
+      
       preloadNextContent();
     }
   };
+
+  if (isInitialLoading || !currentExercise) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-6 animate-in fade-in duration-500">
+        <div className="relative">
+          <div className="size-20 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+             <span className="material-symbols-outlined text-primary text-2xl animate-pulse">auto_stories</span>
+          </div>
+        </div>
+        <div className="text-center">
+          <h3 className="text-2xl font-black mb-2">Đang soạn bài học cho bé...</h3>
+          <p className="text-gray-500 font-medium">Cô giáo AI đang tạo một bài đọc thật hay dành riêng cho bé đây!</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-8 animate-in slide-in-from-right-8 duration-500">
