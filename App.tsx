@@ -13,7 +13,6 @@ import GameDetailView from './views/GameDetailView';
 import AdminView from './views/AdminView';
 import LiveView from './views/LiveView';
 import { authService } from './services/authService';
-import { hasApiKey } from './services/geminiClient';
 
 interface ExpNotification {
   id: number;
@@ -27,7 +26,6 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [initializing, setInitializing] = useState(true);
   const [expNotifications, setExpNotifications] = useState<ExpNotification[]>([]);
-  const [needsApiKey, setNeedsApiKey] = useState(false);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -39,14 +37,8 @@ const App: React.FC = () => {
   }, [isDarkMode]);
 
   useEffect(() => {
-    const checkKeyAndSession = async () => {
+    const initSession = async () => {
       try {
-        // Kiểm tra API Key (Bắt buộc theo hướng dẫn mới cho các model 2.5/3)
-        const hasKey = await (window as any).aistudio.hasSelectedApiKey();
-        if (!hasKey && !hasApiKey()) {
-          setNeedsApiKey(true);
-        }
-
         const currentUser = await authService.getCurrentUser();
         if (currentUser) {
           setUser(currentUser);
@@ -58,18 +50,8 @@ const App: React.FC = () => {
         setInitializing(false);
       }
     };
-    checkKeyAndSession();
+    initSession();
   }, []);
-
-  const handleSelectKey = async () => {
-    try {
-      await (window as any).aistudio.openSelectKey();
-      // Giả định chọn thành công theo hướng dẫn để tránh race condition
-      setNeedsApiKey(false);
-    } catch (err) {
-      console.error("Failed to open key selector", err);
-    }
-  };
 
   const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
@@ -90,9 +72,11 @@ const App: React.FC = () => {
   const handleAwardExp = async (amount: number) => {
     if (!user) return;
     
+    // Thêm thông báo bay lên từ giữa màn hình
     const id = Date.now();
     setExpNotifications(prev => [...prev, { id, amount }]);
     
+    // Tự động xóa sau khi hoạt ảnh kết thúc (tăng lên 2.5s để khớp CSS)
     setTimeout(() => {
       setExpNotifications(prev => prev.filter(n => n.id !== id));
     }, 2500);
@@ -139,38 +123,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-background-light dark:bg-background-dark flex flex-col items-center justify-center gap-6">
         <div className="size-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-        <p className="text-primary font-bold animate-pulse">Đang khởi động Yêu Tiếng Việt...</p>
-      </div>
-    );
-  }
-
-  if (needsApiKey) {
-    return (
-      <div className="min-h-screen bg-background-dark flex items-center justify-center p-6">
-        <div className="max-w-md w-full bg-surface-dark rounded-[3rem] p-10 border border-white/10 shadow-2xl text-center flex flex-col items-center gap-8">
-          <div className="size-32 bg-primary/20 rounded-full flex items-center justify-center text-primary animate-pulse">
-            <span className="material-symbols-outlined text-6xl filled">vpn_key</span>
-          </div>
-          <div className="space-y-3">
-            <h2 className="text-3xl font-black text-white">Chào mừng bé!</h2>
-            <p className="text-gray-400 font-medium">Để cô giáo AI có thể hoạt động, bé (hoặc ba mẹ) hãy giúp cô chọn một API Key nhé.</p>
-            <a 
-              href="https://ai.google.dev/gemini-api/docs/billing" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="inline-block text-primary text-xs font-bold hover:underline mt-2"
-            >
-              Tìm hiểu về thanh toán và API Key
-            </a>
-          </div>
-          <button 
-            onClick={handleSelectKey}
-            className="w-full h-16 bg-primary text-background-dark font-black text-xl rounded-full shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3"
-          >
-            <span className="material-symbols-outlined">key</span>
-            Chọn API Key ngay
-          </button>
-        </div>
+        <p className="text-primary font-bold animate-pulse">Đang tải ứng dụng...</p>
       </div>
     );
   }
@@ -192,6 +145,7 @@ const App: React.FC = () => {
         {renderView()}
       </Layout>
 
+      {/* Container cho hiệu ứng EXP bay lên bùng nổ ở giữa màn hình */}
       <div className="fixed inset-0 flex items-center justify-center z-[9999] pointer-events-none">
         {expNotifications.map(notif => (
           <div 

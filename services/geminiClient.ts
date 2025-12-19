@@ -2,29 +2,21 @@
 import { GoogleGenAI } from "@google/genai";
 
 /**
- * Lấy API Key từ môi trường.
- * Theo quy định, API Key được cung cấp qua process.env.API_KEY.
- */
-export const getApiKey = () => {
-  return process.env.API_KEY;
-};
-
-/**
- * Kiểm tra xem đã có API Key chưa.
- */
-export const hasApiKey = () => {
-  const key = getApiKey();
-  return !!key && key !== "undefined" && key.length > 0;
-};
-
-/**
  * Khởi tạo GoogleGenAI client instance.
- * Luôn khởi tạo ngay trước khi sử dụng để đảm bảo lấy được key mới nhất.
+ * Luôn sử dụng process.env.API_KEY theo quy định của hệ thống.
  */
-export const createAiInstance = () => {
-  const apiKey = getApiKey();
-  if (!apiKey || apiKey === "undefined") {
-    throw new Error("API Key is missing. Please select an API Key first.");
+export const getAiInstance = () => {
+  const apiKey = process.env.API_KEY;
+
+  if (!apiKey || apiKey === 'undefined' || apiKey === '') {
+    console.error("Yêu Tiếng Việt: API_KEY không hợp lệ hoặc chưa được cấu hình.");
+    return null;
   }
-  return new GoogleGenAI({ apiKey });
+
+  try {
+    return new GoogleGenAI({ apiKey });
+  } catch (error) {
+    console.error("Yêu Tiếng Việt: Lỗi khi khởi tạo Gemini SDK:", error);
+    return null;
+  }
 };

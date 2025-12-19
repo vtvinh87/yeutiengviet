@@ -166,8 +166,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdate }) => {
                 <input 
                   type="email" 
                   value={formData.email}
-                  readOnly
-                  className="w-full h-12 px-4 rounded-xl bg-gray-100 dark:bg-white/10 border-2 border-transparent transition-all font-medium opacity-70 cursor-not-allowed outline-none"
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  className="w-full h-12 px-4 rounded-xl bg-gray-50 dark:bg-white/5 border-2 border-transparent focus:border-primary focus:ring-0 transition-all font-medium"
                 />
               </div>
               <div className="space-y-2">

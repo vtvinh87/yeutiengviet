@@ -3,7 +3,7 @@ import { User } from "../types";
 import { supabase } from "./supabaseClient";
 
 export const authService = {
-  async register(userData: Omit<User, 'id' | 'role' | 'exp' | 'level' | 'streak'>): Promise<{ success: boolean; message: string; user?: User }> {
+  async register(userData: Omit<User, 'id' | 'role' | 'exp' | 'level'>): Promise<{ success: boolean; message: string; user?: User }> {
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userData.email,
@@ -29,8 +29,7 @@ export const authService = {
         avatar: userData.avatar || "https://lh3.googleusercontent.com/aida-public/AB6AXuCzmxC4VGasAnzPJKGhpgt-0YSgUzPkIn8BTStpjB2qYDSxVpltOGKD2MLsC4YcOavUFY4XXlYXL2hCGdyxrCp7E91804H30xxX3NShqiPSMCUW0M5DYsUthSdcHNuhi0z80YZNRhoeidAtqtTUGe0k9v38mJwOOjax6u6kOaz34r1FLomkhohE1KZM17M0RI84ZSB0c7mg4v_NIywm61g3hFGQ7vIO-yNs10jpjBxZyhCZkNJzLr81I9s3eU6s8hjHQZPLQBQBHA",
         role: 'user',
         exp: 0,
-        level: 1,
-        streak: 1
+        level: 1
       };
 
       const { error: profileError } = await supabase

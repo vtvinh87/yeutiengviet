@@ -14,7 +14,6 @@ export interface User {
   role: 'user' | 'admin';
   exp: number;
   level: number;
-  streak: number;
 }
 
 export interface Story {

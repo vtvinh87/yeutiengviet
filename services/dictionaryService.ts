@@ -1,13 +1,12 @@
 
-import { Type } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { DictionaryEntry } from "../types";
-import { createAiInstance } from "./geminiClient";
 
 export const dictionaryService = {
   async defineWord(word: string): Promise<DictionaryEntry> {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || 'MISSING' });
+    
     try {
-      const ai = createAiInstance();
-      
       // 1. Get structured definition from Gemini 3 Flash
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
@@ -33,27 +32,44 @@ export const dictionaryService = {
 
       const data = JSON.parse(response.text || '{}');
 
-      // 2. Use a seeded placeholder instead of AI Image Generation to avoid API restrictions
-      const finalImageUrl = `https://picsum.photos/seed/${encodeURIComponent(word + "school")}/600/600`;
+      // 2. Generate a kid-friendly illustration
+      let finalImageUrl = `https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=600&auto=format&fit=crop`;
+      
+      try {
+        const imageResult = await ai.models.generateContent({
+          model: 'gemini-2.5-flash-image',
+          contents: {
+            parts: [{ text: `A kid-friendly, colorful, high-quality digital illustration of: ${data.imagePrompt}. Storybook art style, clean lines, vibrant colors, educational vibe.` }]
+          },
+          config: {
+            imageConfig: {
+              aspectRatio: "1:1"
+            }
+          }
+        });
+
+        for (const part of imageResult.candidates[0].content.parts) {
+          if (part.inlineData) {
+            finalImageUrl = `data:image/png;base64,${part.inlineData.data}`;
+          }
+        }
+      } catch (err) {
+        console.warn("Could not generate AI image for dictionary, using fallback.", err);
+      }
 
       return {
         ...data,
         image: finalImageUrl
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error("Dictionary Service Error:", error);
-      
-      // Handle the case where the key might be missing/invalid mid-session
-      if (error.message?.includes("Requested entity was not found")) {
-        await (window as any).aistudio.openSelectKey();
-      }
-
+      // Fallback response so the app doesn't crash
       return {
         word: word,
         type: "Từ vựng",
         category: "Chưa phân loại",
         phonetic: "...",
-        definition: "Hệ thống AI hiện đang bận hoặc cần cập nhật API Key. Bé hãy nhờ ba mẹ kiểm tra hoặc thử lại sau nhé!",
+        definition: "Hệ thống AI hiện đang bận, cô chưa thể giải nghĩa từ này ngay lúc này được. Bé hãy thử lại sau nhé!",
         examples: ["Ví dụ đang được cập nhật..."],
         synonyms: [],
         image: "https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=600&auto=format&fit=crop"
