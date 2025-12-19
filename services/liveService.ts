@@ -1,10 +1,9 @@
 
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { decodeBase64, decodeAudioData } from './audioUtils';
-// Fix: Corrected import to getAiInstance from geminiClient and removed circular self-import of encodeBase64
-import { getAiInstance } from './geminiClient';
+import { createAiInstance } from './geminiClient';
 
-// Helper for Base64 encoding - Di chuyển ra ngoài nếu cần
+// Helper for Base64 encoding
 export function encodeBase64(bytes: Uint8Array): string {
   let binary = '';
   const len = bytes.byteLength;
@@ -28,17 +27,10 @@ export class LiveTeacherSession {
   private scriptProcessor: ScriptProcessorNode | null = null;
 
   async connect(handlers: LiveSessionHandlers) {
-    const aiClient = getAiInstance();
-    
-    if (!aiClient) {
-      handlers.onStatusChange('error');
-      alert("Tính năng trò chuyện trực tiếp yêu cầu API Key. Vui lòng kiểm tra cấu hình.");
-      return;
-    }
-
-    handlers.onStatusChange('connecting');
-
     try {
+      const aiClient = createAiInstance();
+      handlers.onStatusChange('connecting');
+
       this.inputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
@@ -87,8 +79,11 @@ export class LiveTeacherSession {
               handlers.onTranscription(message.serverContent.outputTranscription.text, false);
             }
           },
-          onerror: (e: any) => {
+          onerror: async (e: any) => {
             console.error("Live session error:", e);
+            if (e.message?.includes("Requested entity was not found")) {
+              await (window as any).aistudio.openSelectKey();
+            }
             handlers.onStatusChange('error');
           },
           onclose: () => {
@@ -105,9 +100,14 @@ export class LiveTeacherSession {
           systemInstruction: 'Bạn là cô giáo dạy Tiếng Việt hiền hậu cho học sinh tiểu học. Hãy trả lời các bé thật dễ mến, ngắn gọn, và khuyến khích các bé học tập.'
         }
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Connection failed", err);
-      handlers.onStatusChange('error');
+      if (err.message?.includes("API Key is missing")) {
+        handlers.onStatusChange('unauthorized');
+        await (window as any).aistudio.openSelectKey();
+      } else {
+        handlers.onStatusChange('error');
+      }
     }
   }
 

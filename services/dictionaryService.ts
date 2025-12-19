@@ -1,17 +1,13 @@
 
 import { Type } from "@google/genai";
 import { DictionaryEntry } from "../types";
-import { getAiInstance } from "./geminiClient";
+import { createAiInstance } from "./geminiClient";
 
 export const dictionaryService = {
   async defineWord(word: string): Promise<DictionaryEntry> {
-    const ai = getAiInstance();
-    
-    if (!ai) {
-      throw new Error("AI client not available");
-    }
-
     try {
+      const ai = createAiInstance();
+      
       // 1. Get structured definition from Gemini 3 Flash
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
@@ -44,15 +40,20 @@ export const dictionaryService = {
         ...data,
         image: finalImageUrl
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Dictionary Service Error:", error);
-      // Fallback response
+      
+      // Handle the case where the key might be missing/invalid mid-session
+      if (error.message?.includes("Requested entity was not found")) {
+        await (window as any).aistudio.openSelectKey();
+      }
+
       return {
         word: word,
         type: "Từ vựng",
         category: "Chưa phân loại",
         phonetic: "...",
-        definition: "Hệ thống AI hiện đang bận, cô chưa thể giải nghĩa từ này ngay lúc này được. Bé hãy thử lại sau nhé!",
+        definition: "Hệ thống AI hiện đang bận hoặc cần cập nhật API Key. Bé hãy nhờ ba mẹ kiểm tra hoặc thử lại sau nhé!",
         examples: ["Ví dụ đang được cập nhật..."],
         synonyms: [],
         image: "https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=600&auto=format&fit=crop"

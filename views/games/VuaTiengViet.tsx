@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { AppView, User } from '../../types';
-import { getAiInstance } from '../../services/geminiClient';
+// Fix: Use createAiInstance instead of getAiInstance
+import { createAiInstance } from '../../services/geminiClient';
 import { Type } from "@google/genai";
 import { aiTeacherService } from '../../services/aiTeacherService';
 
@@ -42,7 +43,14 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
   // Gọi AI tạo bộ từ vựng giáo dục
   const fetchChallenges = async () => {
     setGameState('loading');
-    const ai = getAiInstance();
+    
+    // Fix: Use createAiInstance and handle potential initialization errors
+    let ai;
+    try {
+      ai = createAiInstance();
+    } catch (error) {
+      console.error("AI Initialization failed:", error);
+    }
     
     // Dữ liệu dự phòng nếu AI gặp sự cố
     const fallback = [
@@ -192,7 +200,7 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
 
   if (gameState === 'landing') {
     return (
-      <div className="flex flex-col gap-8 animate-in fade-in duration-500 max-w-4xl mx-auto w-full">
+      <div className="flex flex-col gap-8 animate-in fade-in duration-700 max-w-4xl mx-auto w-full">
         <div className="flex items-center gap-2 text-sm text-[#4c9a66] dark:text-[#8abf9e]">
           <button onClick={() => setView('games')} className="hover:text-primary transition-colors flex items-center gap-1 font-black">
             <span className="material-symbols-outlined text-lg">arrow_back</span> Quay lại kho trò chơi

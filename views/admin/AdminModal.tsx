@@ -5,7 +5,8 @@ import { IMAGE_KEYS } from '../../services/dataService';
 import { aiTeacherService } from '../../services/aiTeacherService';
 import { audioBufferToWav } from '../../services/audioUtils';
 import { storageService } from '../../services/storageService';
-import { getAiInstance } from '../../services/geminiClient';
+// Fix: Use createAiInstance instead of getAiInstance
+import { createAiInstance } from '../../services/geminiClient';
 
 interface AdminModalProps {
   activeTab: 'users' | 'stories' | 'images';
@@ -56,8 +57,12 @@ const AdminModal: React.FC<AdminModalProps> = ({ activeTab, editingItem, onClose
       return;
     }
 
-    const ai = getAiInstance();
-    if (!ai) {
+    // Fix: Use createAiInstance and handle potential initialization errors
+    let ai;
+    try {
+      ai = createAiInstance();
+    } catch (error) {
+      console.error("AI Initialization failed:", error);
       alert("Không thể khởi tạo AI. Vui lòng kiểm tra API Key.");
       return;
     }

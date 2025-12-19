@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { AppView, User } from '../../types';
-import { getAiInstance } from '../../services/geminiClient';
+// Fix: Use createAiInstance instead of getAiInstance
+import { createAiInstance } from '../../services/geminiClient';
 import { Type } from "@google/genai";
 import { aiTeacherService } from '../../services/aiTeacherService';
 
@@ -34,7 +35,14 @@ const RungChuongVang: React.FC<RungChuongVangProps> = ({ setView, user, onAwardE
 
   // Hàm gọi AI tạo câu hỏi
   const generateQuestion = async (num: number): Promise<Question> => {
-    const ai = getAiInstance();
+    // Fix: Use createAiInstance and handle potential initialization errors
+    let ai;
+    try {
+      ai = createAiInstance();
+    } catch (error) {
+      console.error("AI Initialization failed:", error);
+    }
+
     if (!ai) {
       return {
         question: `Câu hỏi dự phòng số ${num}: Từ nào sau đây viết đúng chính tả?`,

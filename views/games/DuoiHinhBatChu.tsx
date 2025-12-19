@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { AppView, User } from '../../types';
-import { getAiInstance } from '../../services/geminiClient';
+// Fix: Use createAiInstance instead of getAiInstance
+import { createAiInstance } from '../../services/geminiClient';
 import { Type } from "@google/genai";
 import { aiTeacherService } from '../../services/aiTeacherService';
 
@@ -33,7 +34,15 @@ const DuoiHinhBatChu: React.FC<DuoiHinhBatChuProps> = ({ setView, user, onAwardE
 
   const generateChallenge = async () => {
     setIsProcessing(true);
-    const ai = getAiInstance();
+    
+    // Fix: Use createAiInstance and handle potential initialization errors
+    let ai;
+    try {
+      ai = createAiInstance();
+    } catch (error) {
+      console.error("AI Initialization failed:", error);
+    }
+    
     if (!ai) return;
 
     try {
