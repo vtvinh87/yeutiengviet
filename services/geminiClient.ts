@@ -6,15 +6,10 @@ import { GoogleGenAI } from "@google/genai";
  * Luôn sử dụng process.env.API_KEY theo quy định của hệ thống.
  */
 export const getAiInstance = () => {
-  const apiKey = process.env.API_KEY;
-
-  if (!apiKey || apiKey === 'undefined' || apiKey === '') {
-    console.error("Yêu Tiếng Việt: API_KEY không hợp lệ hoặc chưa được cấu hình.");
-    return null;
-  }
-
+  // Sử dụng trực tiếp process.env.API_KEY theo hướng dẫn
+  // Không thực hiện kiểm tra chuỗi nghiêm ngặt để tránh lỗi trong các môi trường build khác nhau
   try {
-    return new GoogleGenAI({ apiKey });
+    return new GoogleGenAI({ apiKey: process.env.API_KEY });
   } catch (error) {
     console.error("Yêu Tiếng Việt: Lỗi khi khởi tạo Gemini SDK:", error);
     return null;

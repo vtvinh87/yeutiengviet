@@ -5,7 +5,7 @@ import { IMAGE_KEYS } from '../../services/dataService';
 import { aiTeacherService } from '../../services/aiTeacherService';
 import { audioBufferToWav } from '../../services/audioUtils';
 import { storageService } from '../../services/storageService';
-import { GoogleGenAI } from "@google/genai";
+import { getAiInstance } from '../../services/geminiClient';
 
 interface AdminModalProps {
   activeTab: 'users' | 'stories' | 'images';
@@ -56,12 +56,16 @@ const AdminModal: React.FC<AdminModalProps> = ({ activeTab, editingItem, onClose
       return;
     }
 
+    const ai = getAiInstance();
+    if (!ai) {
+      alert("Không thể khởi tạo AI. Vui lòng kiểm tra API Key.");
+      return;
+    }
+
     setIsGeneratingAudio(true);
     setAudioStatus('Đang tạo audio...');
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      
       const summaryResult = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Tóm tắt ngắn gọn câu chuyện "${title}" trong 1-2 câu cho trẻ em. Nội dung: ${content}`,
@@ -119,14 +123,13 @@ const AdminModal: React.FC<AdminModalProps> = ({ activeTab, editingItem, onClose
     const formData = new FormData(e.currentTarget as HTMLFormElement);
     const values = Object.fromEntries(formData.entries());
     
-    // Tạo bản sao dữ liệu và ghi đè các giá trị tự động/state
     let finalData = { 
       ...editingItem, 
       ...values,
     };
 
     if (activeTab === 'images') {
-      finalData.url = imageUrl; // Luôn lấy từ state imageUrl vì nó chứa link Supabase sau khi upload
+      finalData.url = imageUrl;
     }
 
     if (activeTab === 'stories') {

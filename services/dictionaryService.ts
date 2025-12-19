@@ -1,11 +1,16 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
 import { DictionaryEntry } from "../types";
+import { getAiInstance } from "./geminiClient";
 
 export const dictionaryService = {
   async defineWord(word: string): Promise<DictionaryEntry> {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || 'MISSING' });
+    const ai = getAiInstance();
     
+    if (!ai) {
+      throw new Error("AI client not available");
+    }
+
     try {
       // 1. Get structured definition from Gemini 3 Flash
       const response = await ai.models.generateContent({
@@ -33,7 +38,6 @@ export const dictionaryService = {
       const data = JSON.parse(response.text || '{}');
 
       // 2. Use a seeded placeholder instead of AI Image Generation to avoid API restrictions
-      // This ensures a unique, high-quality educational image for every word without needing extra API calls.
       const finalImageUrl = `https://picsum.photos/seed/${encodeURIComponent(word + "school")}/600/600`;
 
       return {
