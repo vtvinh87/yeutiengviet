@@ -14,6 +14,7 @@ export interface User {
   role: 'user' | 'admin';
   exp: number;
   level: number;
+  streak: number; // Chuỗi ngày học tập
 }
 
 export interface Story {

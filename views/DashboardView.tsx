@@ -12,6 +12,14 @@ const DashboardView: React.FC<DashboardViewProps> = ({ setView, user }) => {
   const [images, setImages] = useState<Record<string, string>>({});
 
   const isAdmin = user.role === 'admin';
+  const expProgress = user.exp % 100;
+  
+  const getLevelName = (lvl: number) => {
+    if (lvl < 2) return "Mầm non mới nhú";
+    if (lvl < 5) return "Mầm non xanh";
+    if (lvl < 10) return "Cây con vươn cao";
+    return "Cây đại thụ tri thức";
+  };
 
   useEffect(() => {
     const fetchImages = async () => {
@@ -28,7 +36,6 @@ const DashboardView: React.FC<DashboardViewProps> = ({ setView, user }) => {
 
   return (
     <div className="flex flex-col gap-8 animate-in fade-in duration-500">
-      {/* Admin Quick Access Banner */}
       {isAdmin && (
         <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-dashed border-amber-200 dark:border-amber-800 p-4 rounded-2xl flex items-center justify-between gap-4 animate-bounce">
           <div className="flex items-center gap-3">
@@ -82,37 +89,43 @@ const DashboardView: React.FC<DashboardViewProps> = ({ setView, user }) => {
         </div>
       </section>
 
+      {/* Phần tiến độ học tập - Đã đồng bộ với USER.STREAK và USER.EXP thực tế */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-[#e7f3eb] dark:bg-[#1e3a29] rounded-2xl p-6 flex flex-col justify-between shadow-sm border border-[#cfe7d7] dark:border-[#2a4535]">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-white dark:bg-white/10 rounded-full text-orange-500">
-              <span className="material-symbols-outlined filled">local_fire_department</span>
+        <div className="bg-[#102216] dark:bg-[#1a3324] rounded-[2rem] p-8 flex flex-col justify-between shadow-xl border border-white/5 relative overflow-hidden group">
+          <div className="absolute -top-10 -right-10 size-32 bg-orange-500/10 rounded-full blur-2xl group-hover:bg-orange-500/20 transition-colors"></div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-3 bg-white/5 rounded-2xl text-orange-500 shadow-inner">
+              <span className="material-symbols-outlined filled text-3xl">local_fire_department</span>
             </div>
-            <h3 className="text-lg font-black">Chuỗi học tập</h3>
+            <h3 className="text-xl font-black text-white">Chuỗi học tập</h3>
           </div>
-          <div className="flex items-end gap-2">
-            <span className="text-5xl font-black text-text-main dark:text-primary">3</span>
-            <span className="text-lg font-bold text-gray-600 dark:text-gray-300 mb-1">ngày</span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-6xl font-black text-primary leading-none">{user.streak || 1}</span>
+            <span className="text-xl font-bold text-gray-300 mb-1">ngày</span>
           </div>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-2">Giỏi lắm! Đừng dừng lại nhé.</p>
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-6">GIỎI LẮM! ĐỪNG DỪNG LẠI NHÉ.</p>
         </div>
 
-        <div className="bg-[#e0f2fe] dark:bg-[#1a384b] rounded-2xl p-6 flex flex-col justify-between shadow-sm border border-[#bae6fd] dark:border-[#254b66] col-span-1 md:col-span-2">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-white dark:bg-white/10 rounded-full text-blue-500">
-                <span className="material-symbols-outlined filled">potted_plant</span>
+        <div className="bg-[#142838] dark:bg-[#152e40] rounded-[2rem] p-8 flex flex-col justify-between shadow-xl border border-white/5 col-span-1 md:col-span-2 relative overflow-hidden group">
+          <div className="absolute -bottom-10 -right-10 size-40 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/20 transition-colors"></div>
+          <div className="flex justify-between items-start mb-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white/5 rounded-2xl text-blue-400 shadow-inner">
+                <span className="material-symbols-outlined filled text-3xl">potted_plant</span>
               </div>
               <div>
-                <h3 className="text-lg font-black">Cây tri thức</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">Level 2: Mầm non xanh</p>
+                <h3 className="text-xl font-black text-white">Cây tri thức</h3>
+                <p className="text-sm text-blue-300/70 font-bold">Level {user.level}: {getLevelName(user.level)}</p>
               </div>
             </div>
-            <span className="text-lg font-black text-blue-700 dark:text-blue-300">75/100 XP</span>
+            <span className="text-xl font-black text-blue-300 bg-blue-900/40 px-4 py-2 rounded-2xl border border-blue-400/20">{expProgress}/100 XP</span>
           </div>
-          <div className="relative w-full h-8 bg-white dark:bg-black/20 rounded-full overflow-hidden shadow-inner p-1">
-            <div className="h-full bg-primary rounded-full flex items-center justify-end pr-3 transition-all duration-1000" style={{width: '75%'}}>
-              <div className="size-3 bg-white/50 rounded-full animate-pulse"></div>
+          <div className="relative w-full h-10 bg-black/40 rounded-full overflow-hidden shadow-2xl p-1.5 border border-white/5">
+            <div 
+              className="h-full bg-primary rounded-full flex items-center justify-end pr-2 transition-all duration-1000 shadow-[0_0_15px_rgba(19,236,91,0.5)]" 
+              style={{width: `${expProgress}%`}}
+            >
+              <div className="size-4 bg-white/50 rounded-full animate-pulse"></div>
             </div>
           </div>
         </div>
@@ -160,45 +173,16 @@ const DashboardView: React.FC<DashboardViewProps> = ({ setView, user }) => {
           />
         </div>
       </section>
-
-      {/* Live Chat FAB-like Card */}
-      <section className="bg-primary/10 dark:bg-primary/5 rounded-[2.5rem] p-8 border-2 border-primary/20 flex flex-col md:flex-row items-center justify-between gap-6 cursor-pointer hover:bg-primary/20 transition-all group" onClick={() => setView('live')}>
-        <div className="flex items-center gap-6 text-center md:text-left">
-           <div className="size-20 rounded-full bg-primary flex items-center justify-center text-text-main shadow-lg group-hover:scale-110 transition-transform">
-             <span className="material-symbols-outlined text-4xl filled">forum</span>
-           </div>
-           <div className="flex flex-col gap-1">
-             <h4 className="text-2xl font-black">Trò chuyện cùng Cô giáo AI</h4>
-             <p className="text-lg font-medium text-emerald-800 dark:text-primary/80">Nói chuyện trực tiếp bằng giọng nói để luyện giao tiếp!</p>
-           </div>
-        </div>
-        <button className="bg-primary text-text-main font-black px-10 h-14 rounded-full shadow-md group-hover:shadow-xl transition-all flex items-center gap-2">
-          Bắt đầu trò chuyện
-          <span className="material-symbols-outlined">arrow_forward</span>
-        </button>
-      </section>
     </div>
   );
 };
 
-interface FeatureCardProps {
-  title: string;
-  desc: string;
-  icon: string;
-  colorClass: string;
-  imgUrl: string;
-  onClick: () => void;
-}
-
-const FeatureCard: React.FC<FeatureCardProps> = ({ title, desc, icon, colorClass, imgUrl, onClick }) => (
+const FeatureCard: React.FC<{title: string; desc: string; icon: string; colorClass: string; imgUrl: string; onClick: () => void;}> = ({ title, desc, icon, colorClass, imgUrl, onClick }) => (
   <button 
     onClick={onClick}
     className={`group relative flex flex-col text-left overflow-hidden rounded-[2rem] ${colorClass} border-2 border-transparent hover:border-primary/30 transition-all hover:shadow-2xl hover:-translate-y-2`}
   >
-    <div 
-      className="aspect-[4/3] w-full bg-cover bg-center group-hover:scale-110 transition-transform duration-700" 
-      style={{backgroundImage: `url("${imgUrl}")`}}
-    ></div>
+    <div className="aspect-[4/3] w-full bg-cover bg-center group-hover:scale-110 transition-transform duration-700" style={{backgroundImage: `url("${imgUrl}")`}}></div>
     <div className="p-6 flex flex-col flex-1">
       <div className="size-12 rounded-2xl bg-white dark:bg-white/10 flex items-center justify-center text-primary shadow-sm mb-4 group-hover:bg-primary group-hover:text-text-main transition-colors">
         <span className="material-symbols-outlined text-3xl filled">{icon}</span>

@@ -16,11 +16,28 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onRegister, onSwitchToLogin
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Quy tắc username: viết liền, không dấu, không ký tự đặc biệt
+  const handleUsernameChange = (val: string) => {
+    const sanitized = val
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // Xóa dấu
+      .replace(/đ/g, "d")
+      .replace(/\s+/g, '') // Xóa khoảng trắng
+      .replace(/[^a-z0-9]/g, ''); // Chỉ cho phép chữ thường và số
+    setUsername(sanitized);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
     
+    if (username.length < 3) {
+      setError("Tên đăng nhập phải có ít nhất 3 ký tự.");
+      return;
+    }
+
+    setLoading(true);
     try {
       const result = await authService.register({
         name,
@@ -30,7 +47,8 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onRegister, onSwitchToLogin
         grade: 'Lớp 2A',
         school: 'Tiểu học Việt Mỹ',
         phone: '',
-        avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCzmxC4VGasAnzPJKGhpgt-0YSgUzPkIn8BTStpjB2qYDSxVpltOGKD2MLsC4YcOavUFY4XXlYXL2hCGdyxrCp7E91804H30xxX3NShqiPSMCUW0M5DYsUthSdcHNuhi0z80YZNRhoeidAtqtTUGe0k9v38mJwOOjax6u6kOaz34r1FLomkhohE1KZM17M0RI84ZSB0c7mg4v_NIywm61g3hFGQ7vIO-yNs10jpjBxZyhCZkNJzLr81I9s3eU6s8hjHQZPLQBQBHA'
+        avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCzmxC4VGasAnzPJKGhpgt-0YSgUzPkIn8BTStpjB2qYDSxVpltOGKD2MLsC4YcOavUFY4XXlYXL2hCGdyxrCp7E91804H30xxX3NShqiPSMCUW0M5DYsUthSdcHNuhi0z80YZNRhoeidAtqtTUGe0k9v38mJwOOjax6u6kOaz34r1FLomkhohE1KZM17M0RI84ZSB0c7mg4v_NIywm61g3hFGQ7vIO-yNs10jpjBxZyhCZkNJzLr81I9s3eU6s8hjHQZPLQBQBHA',
+        streak: 1
       });
 
       if (result.success && result.user) {
@@ -70,15 +88,15 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onRegister, onSwitchToLogin
         </div>
         
         <div className="space-y-2">
-          <label className="text-sm font-bold ml-2">Tên đăng nhập</label>
+          <label className="text-sm font-bold ml-2">Tên đăng nhập (Viết liền, không dấu)</label>
           <div className="relative">
             <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#4c9a66]">person</span>
             <input 
               required
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => handleUsernameChange(e.target.value)}
               className="w-full h-14 pl-12 pr-4 bg-gray-50 dark:bg-surface-dark border-2 border-[#cfe7d7] dark:border-[#2a4533] rounded-full focus:ring-primary focus:border-primary transition-all text-sm md:text-base disabled:opacity-50"
-              placeholder="Nhập tên đăng nhập"
+              placeholder="ví dụ: bean2015"
               type="text"
               disabled={loading}
             />

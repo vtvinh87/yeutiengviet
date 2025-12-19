@@ -5,6 +5,7 @@ import { supabase } from "./supabaseClient";
 export const authService = {
   async register(userData: Omit<User, 'id' | 'role' | 'exp' | 'level'>): Promise<{ success: boolean; message: string; user?: User }> {
     try {
+      // 1. Tạo tài khoản Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password!,
@@ -18,10 +19,11 @@ export const authService = {
       if (authError) throw authError;
       if (!authData.user) throw new Error("Không thể tạo tài khoản xác thực.");
 
+      // Chuẩn bị dữ liệu Profile mới
       const newUser: User = {
         id: authData.user.id,
         name: userData.name,
-        username: userData.username,
+        username: userData.username.toLowerCase().trim(),
         email: userData.email,
         grade: userData.grade || "Lớp 2A",
         school: userData.school || "Tiểu học Việt Mỹ",
@@ -29,16 +31,23 @@ export const authService = {
         avatar: userData.avatar || "https://lh3.googleusercontent.com/aida-public/AB6AXuCzmxC4VGasAnzPJKGhpgt-0YSgUzPkIn8BTStpjB2qYDSxVpltOGKD2MLsC4YcOavUFY4XXlYXL2hCGdyxrCp7E91804H30xxX3NShqiPSMCUW0M5DYsUthSdcHNuhi0z80YZNRhoeidAtqtTUGe0k9v38mJwOOjax6u6kOaz34r1FLomkhohE1KZM17M0RI84ZSB0c7mg4v_NIywm61g3hFGQ7vIO-yNs10jpjBxZyhCZkNJzLr81I9s3eU6s8hjHQZPLQBQBHA",
         role: 'user',
         exp: 0,
-        level: 1
+        level: 1,
+        streak: userData.streak || 1
       };
 
-      const { error: profileError } = await supabase
+      // 2. Cố gắng chèn vào bảng profiles
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .insert([newUser]);
+        .upsert([newUser], { onConflict: 'id' })
+        .select()
+        .single();
 
-      if (profileError) console.error("Profile creation error:", profileError);
+      if (profileError) {
+        console.error("Profile creation error:", profileError);
+        throw profileError;
+      }
 
-      return { success: true, message: "Đăng ký thành công!", user: newUser };
+      return { success: true, message: "Đăng ký thành công!", user: profile || newUser };
     } catch (error: any) {
       return { success: false, message: error.message || "Lỗi đăng ký hệ thống." };
     }
@@ -46,24 +55,53 @@ export const authService = {
 
   async login(usernameOrEmail: string, password: string): Promise<{ success: boolean; message: string; user?: User }> {
     try {
+      const input = usernameOrEmail.trim();
+      let email = input;
+
+      // Nếu không phải là email (không có @), tìm email qua username
+      if (!input.includes('@')) {
+        const { data: profile, error: profileSearchError } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('username', input.toLowerCase())
+          .maybeSingle(); // Sử dụng maybeSingle để tránh ném lỗi nếu không tìm thấy
+        
+        if (profileSearchError) {
+          console.error("Lỗi truy vấn hồ sơ:", profileSearchError);
+          throw new Error("Hệ thống đang bận, vui lòng thử lại sau.");
+        }
+
+        if (!profile) {
+          throw new Error("Tên đăng nhập không tồn tại.");
+        }
+        email = profile.email;
+      }
+
+      // Đăng nhập bằng email và password
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: usernameOrEmail,
+        email: email,
         password: password,
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        if (authError.message.includes("Invalid login credentials")) {
+          throw new Error("Mật khẩu không chính xác.");
+        }
+        throw authError;
+      }
 
-      const { data: profile, error: profileError } = await supabase
+      // Lấy thông tin đầy đủ sau khi đăng nhập thành công
+      const { data: fullProfile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', authData.user.id)
         .single();
 
-      if (profileError || !profile) {
-        throw new Error("Không tìm thấy hồ sơ người dùng trong hệ thống.");
+      if (profileError || !fullProfile) {
+        throw new Error("Tài khoản chưa có hồ sơ. Vui lòng liên hệ Admin.");
       }
 
-      return { success: true, message: "Đăng nhập thành công!", user: profile };
+      return { success: true, message: "Đăng nhập thành công!", user: fullProfile };
     } catch (error: any) {
       return { success: false, message: error.message || "Thông tin đăng nhập không chính xác." };
     }
@@ -83,21 +121,24 @@ export const authService = {
       .eq('id', session.user.id)
       .single();
 
-    if (error) {
-       console.error("Error fetching current user profile:", error);
-       return null;
-    }
-
+    if (error) return null;
     return profile;
   },
 
   async updateProfile(updatedUser: User): Promise<void> {
     const { error } = await supabase
       .from('profiles')
-      .update(updatedUser)
+      .update({
+        name: updatedUser.name,
+        grade: updatedUser.grade,
+        school: updatedUser.school,
+        phone: updatedUser.phone,
+        email: updatedUser.email,
+        avatar: updatedUser.avatar
+      })
       .eq('id', updatedUser.id);
     
-    if (error) console.error("Update profile error:", error);
+    if (error) throw error;
   },
 
   async addExperience(userId: string, amount: number): Promise<User | null> {
@@ -120,10 +161,7 @@ export const authService = {
       .select()
       .single();
 
-    if (updateError) {
-      console.error("Error updating exp:", updateError);
-      return null;
-    }
+    if (updateError) return null;
     return updatedProfile;
   },
 

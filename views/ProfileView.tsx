@@ -21,17 +21,21 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdate }) => {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setTimeout(() => {
-      onUpdate({
+    try {
+      const updatedUser = {
         ...user,
         ...formData
-      });
-      setSaving(false);
+      };
+      await onUpdate(updatedUser);
       alert('Đã cập nhật thông tin thành công!');
-    }, 600);
+    } catch (err) {
+      alert('Có lỗi xảy ra khi lưu thông tin. Bé thử lại nhé!');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleAvatarClick = () => {
@@ -42,7 +46,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdate }) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Kiểm tra kích thước file (giới hạn 2MB)
     if (file.size > 2 * 1024 * 1024) {
       alert("Ảnh quá lớn rồi bé ơi! Hãy chọn ảnh dưới 2MB nhé.");
       return;
@@ -52,7 +55,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdate }) => {
     const publicUrl = await storageService.uploadAvatar(user.id, file);
     
     if (publicUrl) {
-      // Cập nhật ngay lập tức vào database và state cha
       const updatedUser = { ...user, avatar: publicUrl };
       onUpdate(updatedUser);
       alert("Đã thay ảnh đại diện mới rồi đó!");
@@ -100,10 +102,10 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdate }) => {
                 <span className="material-symbols-outlined text-sm">photo_camera</span>
               </button>
             </div>
-            <h3 className="text-2xl font-black mt-6 truncate w-full">{formData.name}</h3>
-            <p className="text-primary font-bold">{formData.grade}</p>
+            <h3 className="text-2xl font-black mt-6 truncate w-full">{user.name}</h3>
+            <p className="text-primary font-bold">{user.grade}</p>
             <div className="w-full h-px bg-gray-100 dark:bg-white/5 my-6"></div>
-            <div className="flex flex-col gap-4 w-full">
+            <div className="flex flex-col gap-4 w-full text-left">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">Tên đăng nhập</span>
                 <span className="text-sm font-bold">{user.username}</span>

@@ -41,16 +41,16 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onSwitchToRegister }) =>
       )}
       <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
         <div className="space-y-2">
-          <label className="text-sm font-bold ml-2">Email</label>
+          <label className="text-sm font-bold ml-2">Email hoặc Tên đăng nhập</label>
           <div className="relative">
-            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#4c9a66]">mail</span>
+            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#4c9a66]">person</span>
             <input 
               required
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full h-14 pl-12 pr-4 bg-gray-50 dark:bg-surface-dark border-2 border-[#cfe7d7] dark:border-[#2a4533] rounded-full focus:ring-primary focus:border-primary transition-all text-sm md:text-base disabled:opacity-50"
-              placeholder="Nhập email phụ huynh"
-              type="email"
+              placeholder="Nhập email hoặc tên đăng nhập"
+              type="text"
               disabled={loading}
             />
           </div>
