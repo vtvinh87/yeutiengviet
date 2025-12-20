@@ -81,6 +81,45 @@ export const storageService = {
   },
 
   /**
+   * Tải ảnh game (Base64 từ AI) lên bucket admin-images để tái sử dụng
+   */
+  async uploadGameImage(base64Data: string): Promise<string | null> {
+    try {
+      // Decode Base64 string to Blob
+      const base64Content = base64Data.split(',')[1] || base64Data;
+      const byteCharacters = atob(base64Content);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'image/png' });
+
+      // Create unique filename
+      const fileName = `game-puzzle-${Date.now()}-${Math.random().toString(36).substring(7)}.png`;
+      
+      // Upload to 'admin-images' bucket (assuming it exists and is public)
+      const { error: uploadError } = await supabase.storage
+        .from('admin-images')
+        .upload(fileName, blob, {
+          contentType: 'image/png',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('admin-images')
+        .getPublicUrl(fileName);
+
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Lỗi uploadGameImage:', error);
+      return null;
+    }
+  },
+
+  /**
    * Tải audio mẫu của bài đọc lên Storage
    */
   async uploadReadingAudio(blob: Blob): Promise<string | null> {

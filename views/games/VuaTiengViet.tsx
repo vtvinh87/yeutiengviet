@@ -4,6 +4,7 @@ import { AppView, User } from '../../types';
 import { getAiInstance } from '../../services/geminiClient';
 import { Type } from "@google/genai";
 import { aiTeacherService } from '../../services/aiTeacherService';
+import { dataService } from '../../services/dataService';
 
 interface WordChallenge {
   word: string;
@@ -26,6 +27,9 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
   const [shuffledLetters, setShuffledLetters] = useState<{ char: string; originalIdx: number; used: boolean }[]>([]);
   const [userInput, setUserInput] = useState<{ char: string; fromIdx: number }[]>([]);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [isGeneratedByAI, setIsGeneratedByAI] = useState(false);
   
   const timerRef = useRef<any>(null);
   const TOTAL_TIME = 600; // 10 phút
@@ -48,6 +52,8 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
     setCurrentIdx(0);
     setScore(0);
     setTimeLeft(TOTAL_TIME);
+    setIsGeneratedByAI(false);
+    setIsSaved(false);
     
     const ai = getAiInstance();
     
@@ -60,24 +66,59 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
       { word: "QUÊ HƯƠNG", hint: "Nơi bé sinh ra và lớn lên", category: "Đất nước" }
     ];
 
+    // Helper để lấy dữ liệu từ kho (DB)
+    const loadFromLibrary = async () => {
+      console.log("Loading from Game Library...");
+      const savedGames = await dataService.getRandomGameContent('VUA_TIENG_VIET', 10);
+      if (savedGames && savedGames.length > 0) {
+        setChallenges(savedGames);
+        initRound(savedGames[0]);
+        setGameState('playing');
+        return true;
+      }
+      return false;
+    };
+
     if (!ai) {
-      setChallenges(fallback);
-      initRound(fallback[0]);
-      setGameState('playing');
+      // Thử load từ DB trước
+      const loaded = await loadFromLibrary();
+      if (!loaded) {
+        setChallenges(fallback);
+        initRound(fallback[0]);
+        setGameState('playing');
+      }
       return;
     }
 
     try {
+      // Danh sách chủ đề đa dạng để tránh lặp từ
+      const themes = [
+        "Từ láy gợi tả âm thanh hoặc hình dáng (VD: Rì rào, Lung linh, Khúc khuỷu)",
+        "Các loại bánh hoặc món ăn đặc sản Việt Nam (VD: Bánh Chưng, Phở Bò, Cơm Tấm)",
+        "Thành ngữ hoặc Tục ngữ 4 chữ (VD: Mẹ tròn con vuông, Học hay làm giỏi)",
+        "Địa danh nổi tiếng Việt Nam (VD: Sài Gòn, Hà Nội, Phú Quốc)",
+        "Đồ vật quen thuộc thời xưa (VD: Đèn dầu, Chạn bát, Áo dài)",
+        "Từ ghép Hán Việt mang nghĩa tốt đẹp (VD: Hạnh phúc, Dũng cảm, Hiếu thảo)",
+        "Các loài vật hoang dã hoặc quý hiếm (VD: Sao la, Voi rừng, Sếu đầu đỏ)"
+      ];
+
+      const randomTheme = themes[Math.floor(Math.random() * themes.length)];
+
+      const prompt = `Bạn là MC chương trình "Vua Tiếng Việt".
+      Hãy tạo 10 thử thách sắp xếp chữ cái (Anagram) cho học sinh lớp ${user.grade}.
+      
+      CHỦ ĐỀ ĐƯỢC CHỌN CHO LẦN NÀY: ${randomTheme}.
+
+      YÊU CẦU:
+      1. Từ/Cụm từ phải có độ dài từ 2 đến 4 tiếng (Ví dụ: "Xôn xao", "Cầu vồng", "Mẹ tròn con vuông").
+      2. KHÔNG chọn các từ quá đơn giản như "Ba", "Mẹ", "Cá". Tránh lặp lại các từ đã quá phổ biến.
+      3. Gợi ý (hint) phải mang tính đố vui, hóm hỉnh, chơi chữ hoặc định nghĩa thông minh để bé tư duy.
+      4. Category phải ngắn gọn (VD: "Ẩm thực", "Từ láy", "Thành ngữ").
+      5. Trả về JSON array: [{ word, hint, category }].`;
+
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: `Bạn là một chuyên gia soạn giáo án Tiếng Việt tiểu học. 
-        Hãy tạo 10 thử thách từ vựng cho học sinh ${user.grade}. 
-        Yêu cầu:
-        1. Từ vựng thuộc các chủ đề quen thuộc: Gia đình, Nhà trường, Thiên nhiên, Con vật, Đồ dùng học tập.
-        2. Từ phải có ý nghĩa giáo dục, không dùng từ lóng hay từ quá khó.
-        3. Mỗi từ từ 2-4 tiếng (ví dụ: "Học tập", "Con voi", "Hoa hồng").
-        4. Gợi ý phải dễ thương, giúp bé tư duy để đoán từ.
-        5. Trả về JSON array của các đối tượng {word, hint, category}.`,
+        contents: prompt,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -91,19 +132,48 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
               },
               required: ["word", "hint", "category"]
             }
-          }
+          },
+          temperature: 1.2 // Tăng tính sáng tạo
         }
       });
       const data = JSON.parse(response.text || '[]');
-      const validData = data.length > 0 ? data : fallback;
-      setChallenges(validData);
-      initRound(validData[0]);
-      setGameState('playing');
+      
+      if (data.length > 0) {
+        setChallenges(data);
+        initRound(data[0]);
+        setIsGeneratedByAI(true);
+        setGameState('playing');
+      } else {
+        throw new Error("Empty AI response");
+      }
     } catch (error) {
-      console.error("Lỗi tạo câu hỏi:", error);
-      setChallenges(fallback);
-      initRound(fallback[0]);
-      setGameState('playing');
+      console.error("Lỗi tạo câu hỏi AI, chuyển sang chế độ lấy từ kho:", error);
+      const loaded = await loadFromLibrary();
+      if (!loaded) {
+        setChallenges(fallback);
+        initRound(fallback[0]);
+        setGameState('playing');
+      }
+    }
+  };
+
+  const handleSaveToLibrary = async () => {
+    if (!challenges || challenges.length === 0) return;
+    setIsSaving(true);
+    
+    // Lưu từng từ một vào kho để có thể lấy ngẫu nhiên sau này
+    let successCount = 0;
+    for (const challenge of challenges) {
+      const success = await dataService.saveGameContent('VUA_TIENG_VIET', challenge);
+      if (success) successCount++;
+    }
+
+    setIsSaving(false);
+    if (successCount > 0) {
+      setIsSaved(true);
+      alert(`Đã lưu ${successCount} từ vựng vào kho trò chơi!`);
+    } else {
+      alert("Lỗi khi lưu vào kho.");
     }
   };
 
@@ -231,7 +301,7 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
            <div className="space-y-4 z-10">
              <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-text-main dark:text-white">Vua Tiếng Việt</h1>
              <p className="text-xl text-gray-500 font-bold max-w-lg mx-auto leading-relaxed">
-               Bé hãy trổ tài sắp xếp các chữ cái để tạo thành từ đúng nhé. Sẵn sàng chưa nào?
+               Thử thách phản xạ Tiếng Việt! Sắp xếp các chữ cái để tìm ra Từ Láy, Thành Ngữ hoặc tên Món Ăn bí ẩn.
              </p>
            </div>
 
@@ -258,7 +328,7 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
         </div>
         <div className="text-center">
           <p className="text-2xl font-black text-gray-700 dark:text-gray-200">Cô đang soạn từ vựng cho bé...</p>
-          <p className="text-gray-400 font-bold mt-2 italic">Những từ vựng thật hay đang được chuẩn bị!</p>
+          <p className="text-gray-400 font-bold mt-2 italic">Chủ đề ngẫu nhiên đang được chọn!</p>
         </div>
       </div>
     );
@@ -338,6 +408,21 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
         </div>
 
         <div className="flex items-center gap-3">
+          {user.role === 'admin' && isGeneratedByAI && !isSaved && (
+             <button 
+               onClick={handleSaveToLibrary}
+               disabled={isSaving}
+               className="size-14 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 flex items-center justify-center shadow-lg border border-blue-200 dark:border-blue-800 hover:scale-110 transition-all"
+               title="Lưu bộ từ này vào Kho trò chơi"
+             >
+               {isSaving ? (
+                 <div className="size-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+               ) : (
+                 <span className="material-symbols-outlined filled text-2xl">save</span>
+               )}
+             </button>
+          )}
+          
           <div className="text-right">
              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Điểm số</p>
              <p className="font-black text-2xl text-primary">{score}</p>

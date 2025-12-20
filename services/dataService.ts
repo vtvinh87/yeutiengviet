@@ -1,5 +1,5 @@
 
-import { Story, AdminImage } from "../types";
+import { Story, AdminImage, GameData, GameType } from "../types";
 import { supabase } from "./supabaseClient";
 import { storageService } from "./storageService";
 
@@ -185,5 +185,123 @@ export const dataService = {
     } catch {
       return fallback;
     }
+  },
+
+  // --- GAME LIBRARY METHODS ---
+
+  async saveGameContent(type: GameType, content: any, id?: string): Promise<boolean> {
+    try {
+      let finalContent = { ...content };
+
+      // Tối ưu hóa: Nếu là game có hình ảnh (Base64), upload lên Storage trước khi lưu DB
+      if (type === 'DUOI_HINH_BAT_CHU' && finalContent.imageUrl && finalContent.imageUrl.startsWith('data:')) {
+        console.log("Phát hiện ảnh Base64, đang tải lên Storage...");
+        const uploadedUrl = await storageService.uploadGameImage(finalContent.imageUrl);
+        if (uploadedUrl) {
+          finalContent.imageUrl = uploadedUrl;
+          console.log("Đã thay thế Base64 bằng URL:", uploadedUrl);
+        } else {
+          console.warn("Không thể tải ảnh lên Storage, sẽ lưu dạng Base64 (có thể nặng DB).");
+        }
+      }
+
+      if (id) {
+        // Update existing record
+        const { error } = await supabase
+          .from('game_library')
+          .update({ content: finalContent })
+          .eq('id', id);
+        if (error) throw error;
+      } else {
+        // Insert new record
+        const { error } = await supabase
+          .from('game_library')
+          .insert([{
+            type,
+            content: finalContent
+          }]);
+        if (error) throw error;
+      }
+      return true;
+    } catch (err) {
+      console.error("Lỗi lưu game content:", err);
+      return false;
+    }
+  },
+
+  async getGameLibrary(type: GameType, page: number = 1, pageSize: number = 5): Promise<GameData[]> {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    try {
+      const { data, error } = await supabase
+        .from('game_library')
+        .select('*')
+        .eq('type', type)
+        .order('created_at', { ascending: false })
+        .range(from, to);
+      
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error("Lỗi lấy game library:", err);
+      return [];
+    }
+  },
+
+  async getGameLibraryCount(type: GameType): Promise<number> {
+    const { count, error } = await supabase
+      .from('game_library')
+      .select('*', { count: 'exact', head: true })
+      .eq('type', type);
+    
+    if (error) return 0;
+    return count || 0;
+  },
+
+  async getRandomGameContent(type: GameType, limit: number = 1): Promise<any[]> {
+    try {
+      // Vì Supabase không hỗ trợ random trực tiếp dễ dàng, 
+      // ta fetch một lượng nhỏ mới nhất hoặc dùng function RPC nếu có.
+      // Ở đây dùng cách fetch 50 item mới nhất rồi shuffle client-side để đơn giản.
+      const { data, error } = await supabase
+        .from('game_library')
+        .select('content')
+        .eq('type', type)
+        .limit(50);
+      
+      if (error || !data) return [];
+      
+      const shuffled = data.sort(() => 0.5 - Math.random());
+      return shuffled.slice(0, limit).map(item => item.content);
+    } catch (err) {
+      return [];
+    }
+  },
+
+  async deleteGameContent(id: string): Promise<void> {
+    // 1. Lấy nội dung để kiểm tra xem có ảnh cần xóa không
+    const { data: item } = await supabase
+      .from('game_library')
+      .select('content')
+      .eq('id', id)
+      .single();
+    
+    // 2. Xóa ảnh trên Storage nếu có
+    if (item && item.content && item.content.imageUrl) {
+      // Kiểm tra xem URL có thuộc về Supabase Storage không
+      if (item.content.imageUrl.includes('supabase.co')) {
+        // Chúng ta sử dụng bucket 'admin-images' cho ảnh game trong implementation mới
+        await storageService.deleteFileFromUrl('admin-images', item.content.imageUrl);
+      }
+    }
+
+    // 3. Xóa record trong DB
+    const { error } = await supabase
+      .from('game_library')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
   }
 };

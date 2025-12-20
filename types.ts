@@ -45,7 +45,7 @@ export interface ReadingPractice {
   title: string;
   text: string;
   image_url: string;
-  audio_url?: string; // Mới thêm
+  audio_url?: string; 
   created_at?: string;
 }
 
@@ -62,4 +62,13 @@ export interface AdminImage {
   description: string;
   category: string;
   key?: string; 
+}
+
+export type GameType = 'RUNG_CHUONG_VANG' | 'VUA_TIENG_VIET' | 'DUOI_HINH_BAT_CHU';
+
+export interface GameData {
+  id: string;
+  type: GameType;
+  content: any; // Stores JSON data specific to each game
+  created_at?: string;
 }

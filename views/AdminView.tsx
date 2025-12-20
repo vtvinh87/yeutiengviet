@@ -10,13 +10,14 @@ import ImageTable from './admin/ImageTable';
 import ReadingPracticeTable from './admin/ReadingPracticeTable';
 import AdminModal from './admin/AdminModal';
 import LogoManager from './admin/LogoManager';
+import GameLibrary from './admin/GameLibrary';
 
 interface AdminViewProps {
   user: User;
 }
 
 const AdminView: React.FC<AdminViewProps> = ({ user }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'stories' | 'images' | 'reading_practice' | 'branding'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'stories' | 'images' | 'reading_practice' | 'branding' | 'games'>('users');
   const [users, setUsers] = useState<User[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
   const [images, setImages] = useState<AdminImage[]>([]);
@@ -58,7 +59,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
   }
 
   useEffect(() => {
-    if (activeTab !== 'branding') {
+    if (activeTab !== 'branding' && activeTab !== 'games') {
       refreshData();
     }
   }, [activeTab, pages]);
@@ -148,7 +149,8 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         stories: stories.length,
         images: images.length,
         reading_practice: readingPractices.length,
-        branding: 0
+        branding: 0,
+        games: 0
       }[activeTab];
 
       if (currentItemsCount === 1 && pages[activeTab as keyof typeof pages] > 1) {
@@ -185,7 +187,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             <p className="text-gray-500 font-medium italic">Xin chào, Cô giáo {user.name}</p>
           </div>
         </div>
-        {activeTab !== 'reading_practice' && activeTab !== 'branding' && (
+        {activeTab !== 'reading_practice' && activeTab !== 'branding' && activeTab !== 'games' && (
           <button 
             onClick={() => openModal()}
             className="flex items-center gap-2 px-8 h-14 bg-primary text-[#102216] font-black rounded-full shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
@@ -202,6 +204,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
           { id: 'stories', label: 'Truyện kể', icon: 'auto_stories' },
           { id: 'images', label: 'Hình ảnh', icon: 'collections' },
           { id: 'reading_practice', label: 'Kho Luyện đọc', icon: 'book' },
+          { id: 'games', label: 'Kho Trò chơi', icon: 'sports_esports' },
           { id: 'branding', label: 'Thương hiệu', icon: 'verified' }
         ].map(tab => (
           <button
@@ -221,6 +224,8 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
       {activeTab === 'branding' ? (
         <LogoManager />
+      ) : activeTab === 'games' ? (
+        <GameLibrary />
       ) : (
         <div className="bg-white dark:bg-surface-dark rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-white/10 min-h-[400px] relative">
           {loading && (
@@ -277,7 +282,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         </div>
       )}
 
-      {isModalOpen && activeTab !== 'branding' && (
+      {isModalOpen && activeTab !== 'branding' && activeTab !== 'games' && (
         <AdminModal 
           activeTab={activeTab === 'reading_practice' ? 'stories' : activeTab} 
           editingItem={editingItem} 

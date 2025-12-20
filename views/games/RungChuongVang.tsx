@@ -4,6 +4,7 @@ import { AppView, User } from '../../types';
 import { getAiInstance } from '../../services/geminiClient';
 import { Type } from "@google/genai";
 import { aiTeacherService } from '../../services/aiTeacherService';
+import { dataService } from '../../services/dataService';
 
 interface Question {
   question: string;
@@ -28,56 +29,98 @@ const RungChuongVang: React.FC<RungChuongVangProps> = ({ setView, user, onAwardE
   const [isAnswered, setIsAnswered] = useState(false);
   const [isRinging, setIsRinging] = useState(false);
   const [isPreloading, setIsPreloading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
-  // Fix: Replaced NodeJS.Timeout with any because the application runs in a browser environment where setInterval returns a number
   const timerRef = useRef<any>(null);
   const TOTAL_QUESTIONS = 10;
 
   // Hàm gọi AI tạo câu hỏi
   const generateQuestion = async (num: number): Promise<Question> => {
     const ai = getAiInstance();
+    const fallbackQuestion = {
+      question: `Từ nào sau đây viết đúng chính tả?`,
+      options: ["Rành mạch", "Dành mạch", "Giành mạch", "Rành mặch"],
+      correctIndex: 0,
+      explanation: "'Rành mạch' có nghĩa là rõ ràng, dễ hiểu."
+    };
+
     if (!ai) {
-      return {
-        question: `Từ nào sau đây viết đúng chính tả?`,
-        options: ["Rành mạch", "Dành mạch", "Giành mạch", "Rành mặch"],
-        correctIndex: 0,
-        explanation: "'Rành mạch' có nghĩa là rõ ràng, dễ hiểu."
-      };
+      // Fallback: Try loading from DB
+      const loaded = await dataService.getRandomGameContent('RUNG_CHUONG_VANG', 1);
+      if (loaded && loaded.length > 0) return loaded[0];
+      return fallbackQuestion;
     }
 
-    const prompt = `Bạn là người ra đề thi Rung Chuông Vàng. Tạo 1 câu hỏi trắc nghiệm Tiếng Việt cho học sinh lớp ${user.grade || '2'}.
-    Nội dung: Đố vui, từ vựng, hoặc ngữ pháp.
-    
-    YÊU CẦU QUAN TRỌNG VỀ ĐỊNH DẠNG:
-    - Trong trường 'question', CHỈ TRẢ VỀ NỘI DUNG CÂU HỎI.
-    - TUYỆT ĐỐI KHÔNG có lời chào, lời dẫn dắt (ví dụ: "Chào các bạn...", "Chúng mình cùng bắt đầu...").
-    - TUYỆT ĐỐI KHÔNG có số thứ tự câu (ví dụ: "Câu 1:", "Câu hỏi số 5:").
-    - Câu hỏi phải ngắn gọn, súc tích, dễ đọc trong 15 giây.
-    
-    Ví dụ ĐÚNG: "Con gì đuôi ngắn tai dài, mắt hồng lông mượt, có tài chạy nhanh?"
-    Ví dụ SAI: "Chào các con, câu hỏi số 1 là: Con gì đuôi ngắn tai dài..."
-    
-    Trả về định dạng JSON.`;
+    // Danh sách chủ đề đa dạng để tránh lặp lại
+    const topics = [
+      "Đố vui dân gian về con vật (Ví dụ: Con gì ăn no bụng to mắt híp...)",
+      "Đố vui về đồ vật quen thuộc trong nhà hoặc trường học",
+      "Kiến thức Tự nhiên & Xã hội (Cây cối, thời tiết, các mùa, vệ sinh thân thể)",
+      "Phép lịch sự và Kỹ năng sống (Chào hỏi, cảm ơn, đi đường an toàn)",
+      "Tìm từ viết sai chính tả hoặc tìm từ trái nghĩa/đồng nghĩa",
+      "Điền từ còn thiếu vào câu Ca dao hoặc Tục ngữ Việt Nam nổi tiếng",
+      "Đố mẹo tư duy logic vui nhộn (Toán đố đơn giản)",
+      "Lịch sử và Địa lý Việt Nam cơ bản (Các vị anh hùng, danh lam thắng cảnh nổi tiếng)",
+      "Từ vựng về cảm xúc và tính cách (Vui vẻ, dũng cảm, thật thà)"
+    ];
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            question: { type: Type.STRING },
-            options: { type: Type.ARRAY, items: { type: Type.STRING }, minItems: 4, maxItems: 4 },
-            correctIndex: { type: Type.INTEGER },
-            explanation: { type: Type.STRING }
+    // Chọn ngẫu nhiên một chủ đề
+    const randomTopic = topics[Math.floor(Math.random() * topics.length)];
+
+    const prompt = `Bạn là người ra đề thi Rung Chuông Vàng cho học sinh tiểu học (Lớp ${user.grade || '2'}).
+    Hãy tạo 1 câu hỏi trắc nghiệm ĐỘC ĐÁO và THÚ VỊ.
+    
+    CHỦ ĐỀ CỤ THỂ CHO CÂU NÀY: ${randomTopic}.
+
+    YÊU CẦU QUAN TRỌNG:
+    1. Câu hỏi phải ngắn gọn, súc tích, phù hợp để đọc trong 15 giây.
+    2. 4 Đáp án phải rõ ràng, chỉ có 1 đáp án đúng duy nhất.
+    3. Giải thích (explanation) phải mang tính giáo dục, vui vẻ, khích lệ bé.
+    4. TRÁNH TUYỆT ĐỐI các câu hỏi quá quen thuộc hoặc đã cũ rích.
+    5. KHÔNG bao gồm lời chào hay số thứ tự câu hỏi trong nội dung.
+    
+    Trả về định dạng JSON: { question, options (mảng 4 string), correctIndex (0-3), explanation }.`;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              question: { type: Type.STRING },
+              options: { type: Type.ARRAY, items: { type: Type.STRING }, minItems: 4, maxItems: 4 },
+              correctIndex: { type: Type.INTEGER },
+              explanation: { type: Type.STRING }
+            },
+            required: ["question", "options", "correctIndex", "explanation"]
           },
-          required: ["question", "options", "correctIndex", "explanation"]
+          temperature: 1.1 // Tăng độ sáng tạo lên một chút
         }
-      }
-    });
+      });
 
-    return JSON.parse(response.text || '{}');
+      return JSON.parse(response.text || '{}');
+    } catch (error) {
+      console.error("AI Gen Error, trying DB:", error);
+      const loaded = await dataService.getRandomGameContent('RUNG_CHUONG_VANG', 1);
+      if (loaded && loaded.length > 0) return loaded[0];
+      return fallbackQuestion;
+    }
+  };
+
+  const handleSaveQuestion = async () => {
+    const currentQ = questions[questionNumber - 1];
+    if (!currentQ) return;
+    setIsSaving(true);
+    const success = await dataService.saveGameContent('RUNG_CHUONG_VANG', currentQ);
+    setIsSaving(false);
+    if (success) {
+      alert("Đã lưu câu hỏi vào Kho Trò chơi!");
+    } else {
+      alert("Lỗi khi lưu câu hỏi.");
+    }
   };
 
   // Khởi động game: Nạp sẵn Câu 1 và Câu 2
@@ -148,7 +191,7 @@ const RungChuongVang: React.FC<RungChuongVangProps> = ({ setView, user, onAwardE
       if (!questions[nextNum - 1]) {
         // Nếu AI chưa nạp kịp (mạng chậm), hiển thị trạng thái chờ một chút
         setGameState('loading');
-        // Đợi 1 giây rồi thử lại hoặc sẽ tự chuyển khi có dữ liệu (ở đây ta đơn giản hóa bằng cách nạp lại)
+        // Đợi 1 giây rồi thử lại hoặc sẽ tự chuyển khi có dữ liệu
         preloadQuestion(nextNum).then(() => {
           setGameState('playing');
           finishMovingToNext(nextNum);
@@ -171,7 +214,6 @@ const RungChuongVang: React.FC<RungChuongVangProps> = ({ setView, user, onAwardE
     setSelectedAnswer(null);
     
     // Khi sang câu n, nạp sẵn câu n+1 (ở đây preload n+1 vì questionNumber đã là n)
-    // Nếu chúng ta đang ở Câu 2, nạp sẵn Câu 3
     if (nextNum + 1 <= TOTAL_QUESTIONS && !questions[nextNum]) {
       preloadQuestion(nextNum + 1);
     }
@@ -312,6 +354,21 @@ const RungChuongVang: React.FC<RungChuongVangProps> = ({ setView, user, onAwardE
         </div>
 
         <div className="flex items-center gap-3">
+          {user.role === 'admin' && (
+            <button 
+              onClick={handleSaveQuestion}
+              disabled={isSaving}
+              className="size-12 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 flex items-center justify-center shadow-lg border border-blue-200 dark:border-blue-800 hover:scale-110 transition-all"
+              title="Lưu câu hỏi này vào kho"
+            >
+              {isSaving ? (
+                <div className="size-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <span className="material-symbols-outlined filled text-xl">save</span>
+              )}
+            </button>
+          )}
+
           <div className="text-right hidden sm:block">
             <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Điểm số</p>
             <p className="font-black text-sm text-yellow-500">{score} điểm</p>
@@ -323,8 +380,15 @@ const RungChuongVang: React.FC<RungChuongVangProps> = ({ setView, user, onAwardE
       </div>
 
       <div className="bg-white dark:bg-surface-dark rounded-[2.5rem] p-8 md:p-12 shadow-soft border border-gray-100 dark:border-white/5 flex flex-col gap-8">
+        {/* Topic Badge */}
+        <div className="flex justify-center">
+           <span className="px-4 py-1.5 rounded-full bg-gray-100 dark:bg-white/5 text-gray-500 text-xs font-bold uppercase tracking-widest">
+             Kiến thức & Tư duy
+           </span>
+        </div>
+
         <div className="text-center min-h-[80px] flex items-center justify-center">
-          <h2 className="text-2xl md:text-4xl font-black leading-tight text-text-main dark:text-white">
+          <h2 className="text-2xl md:text-3xl font-black leading-tight text-text-main dark:text-white">
             {currentQuestion?.question}
           </h2>
         </div>
