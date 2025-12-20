@@ -44,7 +44,7 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
     return arr;
   };
 
-  // Gọi AI tạo bộ từ vựng giáo dục
+  // Gọi AI tạo bộ từ vựng giáo dục (hoặc lấy từ kho)
   const fetchChallenges = async () => {
     setGameState('loading');
     
@@ -55,9 +55,7 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
     setIsGeneratedByAI(false);
     setIsSaved(false);
     
-    const ai = getAiInstance();
-    
-    // Dữ liệu dự phòng nếu AI gặp sự cố
+    // Dữ liệu dự phòng nếu AI gặp sự cố hoặc kho trống
     const fallback = [
       { word: "TRƯỜNG HỌC", hint: "Nơi bé gặp thầy cô và bạn bè mỗi ngày", category: "Nhà trường" },
       { word: "GIA ĐÌNH", hint: "Nơi có ba mẹ và những người yêu thương bé nhất", category: "Yêu thương" },
@@ -78,6 +76,21 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
       }
       return false;
     };
+
+    // --- LOGIC MỚI: Chỉ Admin mới dùng AI, User thường dùng kho ---
+    if (user.role !== 'admin') {
+      const loaded = await loadFromLibrary();
+      if (!loaded) {
+        // Nếu kho trống, dùng fallback
+        setChallenges(fallback);
+        initRound(fallback[0]);
+        setGameState('playing');
+      }
+      return;
+    }
+
+    // --- ADMIN LOGIC: Thử dùng AI ---
+    const ai = getAiInstance();
 
     if (!ai) {
       // Thử load từ DB trước
@@ -327,8 +340,10 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
           </div>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-black text-gray-700 dark:text-gray-200">Cô đang soạn từ vựng cho bé...</p>
-          <p className="text-gray-400 font-bold mt-2 italic">Chủ đề ngẫu nhiên đang được chọn!</p>
+          <p className="text-2xl font-black text-gray-700 dark:text-gray-200">
+            {user.role === 'admin' ? "Cô đang soạn từ vựng mới..." : "Đang lấy câu hỏi từ kho..."}
+          </p>
+          <p className="text-gray-400 font-bold mt-2 italic">Bé chờ một xíu nhé!</p>
         </div>
       </div>
     );
