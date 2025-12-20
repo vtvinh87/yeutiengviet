@@ -38,16 +38,25 @@ const RungChuongVang: React.FC<RungChuongVangProps> = ({ setView, user, onAwardE
     const ai = getAiInstance();
     if (!ai) {
       return {
-        question: `Câu hỏi dự phòng số ${num}: Từ nào sau đây viết đúng chính tả?`,
+        question: `Từ nào sau đây viết đúng chính tả?`,
         options: ["Rành mạch", "Dành mạch", "Giành mạch", "Rành mặch"],
         correctIndex: 0,
         explanation: "'Rành mạch' có nghĩa là rõ ràng, dễ hiểu."
       };
     }
 
-    const prompt = `Bạn là cô giáo tiểu học hiền hậu. Tạo 1 câu hỏi trắc nghiệm Tiếng Việt vui nhộn cho học sinh lớp ${user.grade || '2'}. 
-    Câu hỏi số ${num} trong cuộc thi Rung Chuông Vàng. 
-    Nội dung: Đố vui, từ vựng, hoặc ngữ pháp nhẹ nhàng phù hợp lứa tuổi.
+    const prompt = `Bạn là người ra đề thi Rung Chuông Vàng. Tạo 1 câu hỏi trắc nghiệm Tiếng Việt cho học sinh lớp ${user.grade || '2'}.
+    Nội dung: Đố vui, từ vựng, hoặc ngữ pháp.
+    
+    YÊU CẦU QUAN TRỌNG VỀ ĐỊNH DẠNG:
+    - Trong trường 'question', CHỈ TRẢ VỀ NỘI DUNG CÂU HỎI.
+    - TUYỆT ĐỐI KHÔNG có lời chào, lời dẫn dắt (ví dụ: "Chào các bạn...", "Chúng mình cùng bắt đầu...").
+    - TUYỆT ĐỐI KHÔNG có số thứ tự câu (ví dụ: "Câu 1:", "Câu hỏi số 5:").
+    - Câu hỏi phải ngắn gọn, súc tích, dễ đọc trong 15 giây.
+    
+    Ví dụ ĐÚNG: "Con gì đuôi ngắn tai dài, mắt hồng lông mượt, có tài chạy nhanh?"
+    Ví dụ SAI: "Chào các con, câu hỏi số 1 là: Con gì đuôi ngắn tai dài..."
+    
     Trả về định dạng JSON.`;
 
     const response = await ai.models.generateContent({
