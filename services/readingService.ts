@@ -7,8 +7,29 @@ import { ReadingPractice } from "../types";
 import { audioBufferToWav } from "./audioUtils";
 
 export const readingService = {
-  async generateNextExercise(): Promise<{ title: string; text: string; imageUrl: string; isGenerated: boolean }> {
-    // Tỷ lệ 30% lấy bài cũ từ kho để tối ưu tốc độ và chi phí
+  async generateNextExercise(enableAi: boolean = true): Promise<{ title: string; text: string; imageUrl: string; audioUrl?: string; isGenerated: boolean }> {
+    // Nếu KHÔNG cho phép dùng AI (Học sinh), buộc lấy từ DB
+    if (!enableAi) {
+      const saved = await this.getRandomSavedExercise();
+      if (saved) {
+        return { 
+          title: saved.title, 
+          text: saved.text, 
+          imageUrl: saved.image_url,
+          audioUrl: saved.audio_url, // Trả về audio có sẵn để không phải tạo lại
+          isGenerated: false 
+        };
+      }
+      // Fallback nếu DB rỗng
+      return {
+        title: "Chào bé",
+        text: "Chào mừng bé đến với bài tập đọc. Hãy nhờ thầy cô thêm bài tập mới vào kho nhé!",
+        imageUrl: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=1200&auto=format&fit=crop",
+        isGenerated: false
+      };
+    }
+
+    // Nếu cho phép dùng AI (Admin), giữ logic cũ: 30% lấy bài cũ để tối ưu
     if (Math.random() < 0.3) {
       const saved = await this.getRandomSavedExercise();
       if (saved) {
@@ -17,6 +38,7 @@ export const readingService = {
           title: saved.title, 
           text: saved.text, 
           imageUrl: saved.image_url, 
+          audioUrl: saved.audio_url,
           isGenerated: false // Đánh dấu là bài cũ từ kho
         };
       }
@@ -27,7 +49,7 @@ export const readingService = {
 
     if (!aiClient) {
       const saved = await this.getRandomSavedExercise();
-      if (saved) return { title: saved.title, text: saved.text, imageUrl: saved.image_url, isGenerated: false };
+      if (saved) return { title: saved.title, text: saved.text, imageUrl: saved.image_url, audioUrl: saved.audio_url, isGenerated: false };
       return {
         title: "Mùa xuân về",
         text: "Mùa xuân về, trăm hoa đua nở. Bé cùng mẹ đi chúc tết ông bà. Cả nhà ai cũng vui tươi.",
@@ -74,8 +96,7 @@ export const readingService = {
       } catch (imgErr) {
         console.warn("AI Image generation failed, falling back to database or placeholder", imgErr);
         const saved = await this.getRandomSavedExercise();
-        // Fix: content is available here, but fallback to saved content is safer if img generation failed
-        if (saved) return { title: saved.title, text: saved.text, imageUrl: saved.image_url, isGenerated: false };
+        if (saved) return { title: saved.title, text: saved.text, imageUrl: saved.image_url, audioUrl: saved.audio_url, isGenerated: false };
       }
 
       return {
@@ -87,8 +108,7 @@ export const readingService = {
     } catch (error) {
       console.error("Generate AI Exercise Error:", error);
       const saved = await this.getRandomSavedExercise();
-      // Fix: 'content' is out of scope here. Using 'saved' properties directly for the fallback.
-      if (saved) return { title: saved.title, text: saved.text, imageUrl: saved.image_url, isGenerated: false };
+      if (saved) return { title: saved.title, text: saved.text, imageUrl: saved.image_url, audioUrl: saved.audio_url, isGenerated: false };
       return { 
         title: "Bài tập đọc", 
         text: "Mẹ đi chợ mua cá. Bé ở nhà học bài.", 
@@ -199,7 +219,6 @@ export const readingService = {
     if (!aiClient) return null;
 
     try {
-      // Fix: Updated contents to use correct multi-part object format { parts: [...] }
       const response = await aiClient.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: {

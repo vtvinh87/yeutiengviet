@@ -44,11 +44,12 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
       setIsInitialLoading(true);
       try {
         const user = await authService.getCurrentUser();
-        setIsAdmin(user?.role === 'admin');
+        const isAdminUser = user?.role === 'admin';
+        setIsAdmin(isAdminUser);
 
         // Lấy bài đầu tiên
-        const content = await readingService.generateNextExercise();
-        const audio = await aiTeacherService.generateSpeechBuffer(content.text, audioCtxRef.current!);
+        const content = await readingService.generateNextExercise(isAdminUser);
+        const audio = await prepareAudio(content);
         
         const firstEx = {
           title: content.title,
@@ -60,8 +61,8 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
         setCurrentExercise(firstEx);
         if (audio) playBuffer(audio);
         
-        // Bắt đầu nạp trước bài tiếp theo ngay lập tức
-        preloadNextContent();
+        // Bắt đầu nạp trước bài tiếp theo
+        preloadNextContent(isAdminUser);
       } catch (error) {
         console.error("Initial generation error:", error);
       } finally {
@@ -76,6 +77,25 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
     };
   }, []);
 
+  // Hàm hỗ trợ: Ưu tiên lấy audio từ URL có sẵn (DB), nếu không có mới dùng AI tạo
+  const prepareAudio = async (content: { text: string; audioUrl?: string }): Promise<AudioBuffer | null> => {
+    if (!audioCtxRef.current) return null;
+    
+    // 1. Nếu có audioUrl từ DB, tải về và decode (Nhanh)
+    if (content.audioUrl) {
+      try {
+        const response = await fetch(content.audioUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        return await audioCtxRef.current.decodeAudioData(arrayBuffer);
+      } catch (err) {
+        console.warn("Failed to load saved audio, falling back to AI", err);
+      }
+    }
+
+    // 2. Fallback: Dùng AI tạo audio (Chậm hơn)
+    return await aiTeacherService.generateSpeechBuffer(content.text, audioCtxRef.current);
+  };
+
   const playBuffer = (buffer: AudioBuffer) => {
     if (!audioCtxRef.current) return;
     setIsSpeaking(true);
@@ -86,12 +106,15 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
     source.start();
   };
 
-  const preloadNextContent = async () => {
+  const preloadNextContent = async (adminOverride?: boolean) => {
     if (preloadedNext || hasStartedPreload) return;
     setHasStartedPreload(true);
+    
+    const useAi = adminOverride !== undefined ? adminOverride : isAdmin;
+
     try {
-      const nextContent = await readingService.generateNextExercise();
-      const nextAudio = await aiTeacherService.generateSpeechBuffer(nextContent.text, audioCtxRef.current!);
+      const nextContent = await readingService.generateNextExercise(useAi);
+      const nextAudio = await prepareAudio(nextContent);
       
       setPreloadedNext({
         title: nextContent.title,
@@ -119,7 +142,7 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
   };
 
   const startRecording = async () => {
-    // Đảm bảo bài tiếp theo đang được chuẩn bị khi bé đang đọc
+    // Đảm bảo bài tiếp theo đang được chuẩn bị
     preloadNextContent();
     
     try {
@@ -189,12 +212,12 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
         setFeedbackData(null);
         if (preloadedNext.audioBuffer) playBuffer(preloadedNext.audioBuffer);
         
-        // Lại tiếp tục nạp trước bài kế tiếp sau khi đã đổi bài
+        // Lại tiếp tục nạp trước bài kế tiếp
         setTimeout(() => preloadNextContent(), 500);
       } else {
         // Nếu bài nạp trước chưa xong, buộc phải đợi và nạp mới
-        const nextContent = await readingService.generateNextExercise();
-        const nextAudio = await aiTeacherService.generateSpeechBuffer(nextContent.text, audioCtxRef.current!);
+        const nextContent = await readingService.generateNextExercise(isAdmin);
+        const nextAudio = await prepareAudio(nextContent);
         
         const newEx = {
           title: nextContent.title,
@@ -227,8 +250,12 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
           </div>
         </div>
         <div className="text-center">
-          <h3 className="text-2xl font-black mb-2 text-text-main dark:text-white">Đang chuẩn bị bài học...</h3>
-          <p className="text-gray-500 font-medium">Cô giáo AI đang soạn bài và ghi âm giọng đọc cho bé!</p>
+          <h3 className="text-2xl font-black mb-2 text-text-main dark:text-white">
+            {isAdmin ? "Đang chuẩn bị bài học..." : "Đang mở sách tập đọc..."}
+          </h3>
+          <p className="text-gray-500 font-medium">
+            {isAdmin ? "Cô giáo AI đang soạn bài đọc mới cho bé!" : "Bé chờ một xíu nhé!"}
+          </p>
         </div>
       </div>
     );
