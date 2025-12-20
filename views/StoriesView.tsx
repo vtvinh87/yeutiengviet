@@ -20,17 +20,57 @@ const StoriesView: React.FC<StoriesViewProps> = ({ onAwardExp }) => {
   const [aiResponse, setAiResponse] = useState('');
   const [loadingAI, setLoadingAI] = useState(false);
   
+  // Trạng thái cho infinite scroll
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   // Trạng thái theo dõi xem truyện hiện tại đã được thưởng điểm chưa
   const [hasAwardedCurrent, setHasAwardedCurrent] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
-      const loaded = await dataService.getStories();
+      // Tải trang đầu tiên (5 items)
+      const loaded = await dataService.getStories(1, 5);
       setStories(loaded);
       if (loaded.length > 0) setSelectedStory(loaded[0]);
+      
+      // Nếu số lượng tải về ít hơn pageSize (5), nghĩa là đã hết
+      if (loaded.length < 5) setHasMore(false);
     };
     loadData();
   }, []);
+
+  const handleLoadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    
+    try {
+      const moreStories = await dataService.getStories(nextPage, 5);
+      
+      if (moreStories.length < 5) {
+        setHasMore(false);
+      }
+      
+      if (moreStories.length > 0) {
+        setStories(prev => {
+          // Lọc trùng lặp để an toàn
+          const existingIds = new Set(prev.map(s => s.id));
+          const uniqueNewStories = moreStories.filter(s => !existingIds.has(s.id));
+          return [...prev, ...uniqueNewStories];
+        });
+        setPage(nextPage);
+      } else {
+        setHasMore(false);
+      }
+    } catch (error) {
+      console.error("Lỗi khi tải thêm truyện:", error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const handleSelectStory = (story: Story) => {
     setSelectedStory(story);
@@ -73,6 +113,9 @@ const StoriesView: React.FC<StoriesViewProps> = ({ onAwardExp }) => {
         selectedStory={selectedStory} 
         onSelectStory={handleSelectStory} 
         isPlaying={isPlaying} 
+        onLoadMore={handleLoadMore}
+        hasMore={hasMore}
+        loadingMore={loadingMore}
         audioPlayer={
           <AudioPlayer 
             isPlaying={isPlaying} 

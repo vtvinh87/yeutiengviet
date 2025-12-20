@@ -8,9 +8,32 @@ interface StoryListProps {
   onSelectStory: (story: Story) => void;
   isPlaying: boolean;
   audioPlayer: React.ReactNode;
+  onLoadMore: () => void;
+  hasMore: boolean;
+  loadingMore: boolean;
 }
 
-const StoryList: React.FC<StoryListProps> = ({ stories, selectedStory, onSelectStory, isPlaying, audioPlayer }) => {
+const StoryList: React.FC<StoryListProps> = ({ 
+  stories, 
+  selectedStory, 
+  onSelectStory, 
+  isPlaying, 
+  audioPlayer,
+  onLoadMore,
+  hasMore,
+  loadingMore 
+}) => {
+  
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, clientHeight, scrollHeight } = e.currentTarget;
+    // Nếu người dùng cuộn gần đến đáy (còn 20px)
+    if (scrollHeight - scrollTop <= clientHeight + 20) {
+      if (!loadingMore && hasMore) {
+        onLoadMore();
+      }
+    }
+  };
+
   return (
     <aside className="w-full lg:w-[400px] flex flex-col border-r border-[#cfe7d7] dark:border-gray-800 bg-white dark:bg-[#102216] shrink-0 h-[40vh] lg:h-full overflow-hidden">
       <div className="p-6 pb-2 shrink-0">
@@ -24,7 +47,10 @@ const StoryList: React.FC<StoryListProps> = ({ stories, selectedStory, onSelectS
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
+      <div 
+        className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar scroll-smooth"
+        onScroll={handleScroll}
+      >
         {stories.map((story) => (
           <div 
             key={story.id}
@@ -58,14 +84,23 @@ const StoryList: React.FC<StoryListProps> = ({ stories, selectedStory, onSelectS
             )}
           </div>
         ))}
+        
+        {loadingMore && (
+          <div className="flex justify-center py-4 w-full">
+            <div className="flex items-center gap-2 text-primary font-bold text-sm">
+               <div className="size-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+               Đang tải thêm...
+            </div>
+          </div>
+        )}
+        
+        {!hasMore && stories.length > 5 && (
+           <div className="text-center py-4 text-xs text-gray-400 italic">
+             Đã hiển thị hết danh sách truyện.
+           </div>
+        )}
       </div>
 
-      {/* 
-          Responsive Player Container:
-          - lg:relative: Stays at the bottom of this sidebar on desktop.
-          - fixed bottom-0 left-0 right-0: Becomes a bottom bar on mobile/tablet.
-          - z-40 ensures it stays above the story content on mobile.
-      */}
       <div className="shrink-0 p-4 bg-white dark:bg-[#102216] lg:bg-gray-50 lg:dark:bg-black/20 border-t border-[#cfe7d7] dark:border-gray-800 lg:relative fixed bottom-0 left-0 right-0 z-40 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] lg:shadow-none">
         {audioPlayer}
       </div>
