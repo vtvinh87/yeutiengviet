@@ -49,28 +49,27 @@ const App: React.FC = () => {
 
         // 1. Update Favicon
         if (faviconUrl) {
-          let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
-          if (!link) {
-            link = document.createElement('link');
-            link.rel = 'icon';
-            document.head.appendChild(link);
-          }
+          const existingIcon = document.querySelectorAll("link[rel~='icon']");
+          existingIcon.forEach(e => e.remove());
+
+          const link = document.createElement('link');
+          link.rel = 'icon';
           link.href = faviconUrl;
+          document.head.appendChild(link);
         }
 
         // 2. Update Apple Touch Icon & Manifest (Quan trọng cho Android/PWA)
         if (pwaIconUrl) {
           // Update Apple Touch Icon (iOS)
-          let link = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement;
-          if (!link) {
-            link = document.createElement('link');
-            link.rel = 'apple-touch-icon';
-            document.head.appendChild(link);
-          }
-          link.href = pwaIconUrl;
+          const existingApple = document.querySelectorAll("link[rel='apple-touch-icon']");
+          existingApple.forEach(e => e.remove());
+
+          const appleLink = document.createElement('link');
+          appleLink.rel = 'apple-touch-icon';
+          appleLink.href = pwaIconUrl;
+          document.head.appendChild(appleLink);
 
           // Update Manifest dynamically (Android)
-          // Chúng ta lấy manifest gốc, thay đổi icons, tạo blob URL và gán lại vào thẻ link
           try {
             const manifestRes = await fetch('/manifest.json');
             if (manifestRes.ok) {
@@ -81,7 +80,7 @@ const App: React.FC = () => {
                 {
                   src: pwaIconUrl,
                   sizes: "192x192",
-                  type: "image/png" // Giả định là png, hầu hết trình duyệt mobile đều xử lý được kể cả jpeg
+                  type: "image/png"
                 },
                 {
                   src: pwaIconUrl,
@@ -94,10 +93,15 @@ const App: React.FC = () => {
               const blob = new Blob([stringManifest], {type: 'application/json'});
               const manifestURL = URL.createObjectURL(blob);
               
-              const manifestLink = document.querySelector("link[rel='manifest']") as HTMLLinkElement;
-              if (manifestLink) {
-                manifestLink.href = manifestURL;
-              }
+              // Remove old manifest link entirely
+              const existingManifest = document.querySelectorAll("link[rel='manifest']");
+              existingManifest.forEach(e => e.remove());
+
+              // Add new manifest link
+              const manifestLink = document.createElement('link');
+              manifestLink.rel = 'manifest';
+              manifestLink.href = manifestURL;
+              document.head.appendChild(manifestLink);
             }
           } catch (e) {
             console.warn("Could not update dynamic manifest", e);

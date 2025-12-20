@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'yeu-tieng-viet-v1';
+const CACHE_NAME = 'yeu-tieng-viet-v2';
 const urlsToCache = [
   '/',
   '/index.html',
