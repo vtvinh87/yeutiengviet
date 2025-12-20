@@ -38,7 +38,7 @@ const App: React.FC = () => {
     }
   }, [isDarkMode]);
 
-  // Handle System Branding (Favicon, PWA Icon)
+  // Handle System Branding (Favicon, PWA Icon, Manifest)
   useEffect(() => {
     const applyBranding = async () => {
       try {
@@ -47,6 +47,7 @@ const App: React.FC = () => {
           dataService.getSystemImage(IMAGE_KEYS.SYSTEM_PWA_ICON, '')
         ]);
 
+        // 1. Update Favicon
         if (faviconUrl) {
           let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
           if (!link) {
@@ -57,7 +58,9 @@ const App: React.FC = () => {
           link.href = faviconUrl;
         }
 
+        // 2. Update Apple Touch Icon & Manifest (Quan trọng cho Android/PWA)
         if (pwaIconUrl) {
+          // Update Apple Touch Icon (iOS)
           let link = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement;
           if (!link) {
             link = document.createElement('link');
@@ -65,6 +68,40 @@ const App: React.FC = () => {
             document.head.appendChild(link);
           }
           link.href = pwaIconUrl;
+
+          // Update Manifest dynamically (Android)
+          // Chúng ta lấy manifest gốc, thay đổi icons, tạo blob URL và gán lại vào thẻ link
+          try {
+            const manifestRes = await fetch('/manifest.json');
+            if (manifestRes.ok) {
+              const manifest = await manifestRes.json();
+              
+              // Ghi đè icons bằng ảnh từ Admin Panel
+              manifest.icons = [
+                {
+                  src: pwaIconUrl,
+                  sizes: "192x192",
+                  type: "image/png" // Giả định là png, hầu hết trình duyệt mobile đều xử lý được kể cả jpeg
+                },
+                {
+                  src: pwaIconUrl,
+                  sizes: "512x512",
+                  type: "image/png"
+                }
+              ];
+
+              const stringManifest = JSON.stringify(manifest);
+              const blob = new Blob([stringManifest], {type: 'application/json'});
+              const manifestURL = URL.createObjectURL(blob);
+              
+              const manifestLink = document.querySelector("link[rel='manifest']") as HTMLLinkElement;
+              if (manifestLink) {
+                manifestLink.href = manifestURL;
+              }
+            }
+          } catch (e) {
+            console.warn("Could not update dynamic manifest", e);
+          }
         }
       } catch (err) {
         console.warn("Could not apply system branding:", err);
