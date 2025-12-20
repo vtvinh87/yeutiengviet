@@ -86,12 +86,20 @@ const DuoiHinhBatChu: React.FC<DuoiHinhBatChuProps> = ({ setView, user, onAwardE
    * Tách biệt khỏi state để dùng cho cả load ban đầu và preload
    */
   const fetchSingleChallenge = async (): Promise<PuzzleChallenge | null> => {
-    const ai = getAiInstance();
+    // Helper loading from Database
     const loadFromDB = async () => {
       const loaded = await dataService.getRandomGameContent('DUOI_HINH_BAT_CHU', 1);
       return loaded && loaded.length > 0 ? loaded[0] : null;
     };
 
+    // --- LOGIC THAY ĐỔI: Chỉ Admin mới được dùng AI tạo mới ---
+    // Nếu là User thường (Học sinh), luôn lấy từ DB để đảm bảo nội dung đã được duyệt
+    if (user.role !== 'admin') {
+      return await loadFromDB();
+    }
+
+    // Nếu là Admin, thử dùng AI, nếu lỗi thì fallback về DB
+    const ai = getAiInstance();
     if (!ai) return await loadFromDB();
 
     try {
@@ -189,7 +197,7 @@ const DuoiHinhBatChu: React.FC<DuoiHinhBatChuProps> = ({ setView, user, onAwardE
       // Ngay lập tức Preload câu tiếp theo
       preloadNext();
     } else {
-      alert("Hệ thống đang bận, bé quay lại sau nhé!");
+      alert("Hệ thống đang bận hoặc kho câu hỏi trống, bé quay lại sau nhé!");
       setGameState('landing');
     }
   };
@@ -353,7 +361,9 @@ const DuoiHinhBatChu: React.FC<DuoiHinhBatChuProps> = ({ setView, user, onAwardE
       <div className="flex flex-col items-center justify-center py-40 gap-8">
         <div className="size-20 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
         <div className="text-center">
-          <h3 className="text-2xl font-black">Cô giáo AI đang vẽ câu đố...</h3>
+          <h3 className="text-2xl font-black">
+            {user.role === 'admin' ? "Cô giáo AI đang vẽ câu đố..." : "Đang lấy câu đố từ kho..."}
+          </h3>
           <p className="text-gray-500 font-medium">Bé chờ một xíu nhé!</p>
         </div>
       </div>
