@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AppView, User } from '../types';
 import MobileMenu from './MobileMenu';
+import { dataService, IMAGE_KEYS } from '../services/dataService';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -16,6 +17,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, isDarkMode, toggleDarkMode, onLogout, user }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [systemLogo, setSystemLogo] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const isAdmin = user.role === 'admin';
@@ -34,6 +36,14 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, isDarkMo
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
+    
+    // Fetch System Logo
+    const fetchLogo = async () => {
+      const url = await dataService.getSystemImage(IMAGE_KEYS.SYSTEM_LOGO, '');
+      if (url) setSystemLogo(url);
+    };
+    fetchLogo();
+
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
@@ -43,9 +53,17 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, isDarkMo
         <div className="flex items-center justify-between px-4 py-3 md:px-10 lg:px-20 max-w-7xl mx-auto w-full">
           {/* Logo Section */}
           <div className="flex items-center gap-4 cursor-pointer" onClick={() => setView('dashboard')}>
-            <div className="flex items-center justify-center size-10 rounded-full bg-primary/20 text-primary">
-              <span className="material-symbols-outlined filled text-2xl">school</span>
-            </div>
+            {systemLogo ? (
+              <img 
+                src={systemLogo} 
+                alt="Yêu Tiếng Việt Logo" 
+                className="h-10 w-auto object-contain"
+              />
+            ) : (
+              <div className="flex items-center justify-center size-10 rounded-full bg-primary/20 text-primary">
+                <span className="material-symbols-outlined filled text-2xl">school</span>
+              </div>
+            )}
             <h1 className="text-text-main dark:text-white text-lg md:text-xl font-black tracking-tight">
               Yêu Tiếng Việt
             </h1>
@@ -162,7 +180,11 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, isDarkMo
         <footer className="py-8 bg-[#f8fcf9] dark:bg-[#102216] border-t border-[#e7f3eb] dark:border-[#2a4535]">
           <div className="max-w-7xl mx-auto px-4 flex flex-col items-center gap-4">
             <div className="flex items-center gap-2 opacity-50">
-              <span className="material-symbols-outlined text-primary filled">school</span>
+              {systemLogo ? (
+                <img src={systemLogo} alt="Logo" className="h-6 w-auto grayscale" />
+              ) : (
+                <span className="material-symbols-outlined text-primary filled">school</span>
+              )}
               <span className="font-bold tracking-tight">Yêu Tiếng Việt</span>
             </div>
             <p className="text-sm text-gray-500">© Mường Thín 2025</p>

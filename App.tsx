@@ -13,6 +13,7 @@ import GameDetailView from './views/GameDetailView';
 import AdminView from './views/AdminView';
 import LiveView from './views/LiveView';
 import { authService } from './services/authService';
+import { dataService, IMAGE_KEYS } from './services/dataService';
 
 interface ExpNotification {
   id: number;
@@ -35,6 +36,41 @@ const App: React.FC = () => {
       root.classList.remove('dark');
     }
   }, [isDarkMode]);
+
+  // Handle System Branding (Favicon, PWA Icon)
+  useEffect(() => {
+    const applyBranding = async () => {
+      try {
+        const [faviconUrl, pwaIconUrl] = await Promise.all([
+          dataService.getSystemImage(IMAGE_KEYS.SYSTEM_FAVICON, ''),
+          dataService.getSystemImage(IMAGE_KEYS.SYSTEM_PWA_ICON, '')
+        ]);
+
+        if (faviconUrl) {
+          let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+          if (!link) {
+            link = document.createElement('link');
+            link.rel = 'icon';
+            document.head.appendChild(link);
+          }
+          link.href = faviconUrl;
+        }
+
+        if (pwaIconUrl) {
+          let link = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement;
+          if (!link) {
+            link = document.createElement('link');
+            link.rel = 'apple-touch-icon';
+            document.head.appendChild(link);
+          }
+          link.href = pwaIconUrl;
+        }
+      } catch (err) {
+        console.warn("Could not apply system branding:", err);
+      }
+    };
+    applyBranding();
+  }, []);
 
   useEffect(() => {
     const initSession = async () => {

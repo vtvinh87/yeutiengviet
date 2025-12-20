@@ -9,13 +9,14 @@ import StoryTable from './admin/StoryTable';
 import ImageTable from './admin/ImageTable';
 import ReadingPracticeTable from './admin/ReadingPracticeTable';
 import AdminModal from './admin/AdminModal';
+import LogoManager from './admin/LogoManager';
 
 interface AdminViewProps {
   user: User;
 }
 
 const AdminView: React.FC<AdminViewProps> = ({ user }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'stories' | 'images' | 'reading_practice'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'stories' | 'images' | 'reading_practice' | 'branding'>('users');
   const [users, setUsers] = useState<User[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
   const [images, setImages] = useState<AdminImage[]>([]);
@@ -57,7 +58,9 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
   }
 
   useEffect(() => {
-    refreshData();
+    if (activeTab !== 'branding') {
+      refreshData();
+    }
   }, [activeTab, pages]);
 
   const refreshData = async () => {
@@ -144,11 +147,12 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         users: users.length,
         stories: stories.length,
         images: images.length,
-        reading_practice: readingPractices.length
+        reading_practice: readingPractices.length,
+        branding: 0
       }[activeTab];
 
-      if (currentItemsCount === 1 && pages[activeTab] > 1) {
-        handlePageChange(pages[activeTab] - 1);
+      if (currentItemsCount === 1 && pages[activeTab as keyof typeof pages] > 1) {
+        handlePageChange(pages[activeTab as keyof typeof pages] - 1);
       } else {
         await refreshData();
       }
@@ -181,7 +185,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
             <p className="text-gray-500 font-medium italic">Xin chào, Cô giáo {user.name}</p>
           </div>
         </div>
-        {activeTab !== 'reading_practice' && (
+        {activeTab !== 'reading_practice' && activeTab !== 'branding' && (
           <button 
             onClick={() => openModal()}
             className="flex items-center gap-2 px-8 h-14 bg-primary text-[#102216] font-black rounded-full shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
@@ -197,7 +201,8 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
           { id: 'users', label: 'Học sinh', icon: 'person' },
           { id: 'stories', label: 'Truyện kể', icon: 'auto_stories' },
           { id: 'images', label: 'Hình ảnh', icon: 'collections' },
-          { id: 'reading_practice', label: 'Kho Luyện đọc', icon: 'book' }
+          { id: 'reading_practice', label: 'Kho Luyện đọc', icon: 'book' },
+          { id: 'branding', label: 'Thương hiệu', icon: 'verified' }
         ].map(tab => (
           <button
             key={tab.id}
@@ -214,61 +219,65 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         ))}
       </div>
 
-      <div className="bg-white dark:bg-surface-dark rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-white/10 min-h-[400px] relative">
-        {loading && (
-          <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center gap-4">
-             <div className="size-14 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-             <p className="text-primary font-black animate-pulse">Đang cập nhật...</p>
+      {activeTab === 'branding' ? (
+        <LogoManager />
+      ) : (
+        <div className="bg-white dark:bg-surface-dark rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-white/10 min-h-[400px] relative">
+          {loading && (
+            <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center gap-4">
+              <div className="size-14 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+              <p className="text-primary font-black animate-pulse">Đang cập nhật...</p>
+            </div>
+          )}
+          <div className="p-2 overflow-x-auto custom-scrollbar">
+            {activeTab === 'users' && (
+              <UserTable 
+                users={users} 
+                onEdit={openModal} 
+                onDelete={handleDeleteInitiated}
+                currentPage={pages.users}
+                totalItems={totals.users}
+                pageSize={PAGE_SIZE}
+                onPageChange={handlePageChange}
+              />
+            )}
+            {activeTab === 'stories' && (
+              <StoryTable 
+                stories={stories} 
+                onEdit={openModal} 
+                onDelete={handleDeleteInitiated}
+                currentPage={pages.stories}
+                totalItems={totals.stories}
+                pageSize={PAGE_SIZE}
+                onPageChange={handlePageChange}
+              />
+            )}
+            {activeTab === 'images' && (
+              <ImageTable 
+                images={images} 
+                onEdit={openModal} 
+                onDelete={handleDeleteInitiated}
+                currentPage={pages.images}
+                totalItems={totals.images}
+                pageSize={PAGE_SIZE}
+                onPageChange={handlePageChange}
+              />
+            )}
+            {activeTab === 'reading_practice' && (
+              <ReadingPracticeTable 
+                items={readingPractices} 
+                onDelete={handleDeleteInitiated} 
+                currentPage={pages.reading_practice}
+                totalItems={totals.reading_practice}
+                pageSize={PAGE_SIZE}
+                onPageChange={handlePageChange}
+              />
+            )}
           </div>
-        )}
-        <div className="p-2 overflow-x-auto custom-scrollbar">
-          {activeTab === 'users' && (
-            <UserTable 
-              users={users} 
-              onEdit={openModal} 
-              onDelete={handleDeleteInitiated}
-              currentPage={pages.users}
-              totalItems={totals.users}
-              pageSize={PAGE_SIZE}
-              onPageChange={handlePageChange}
-            />
-          )}
-          {activeTab === 'stories' && (
-            <StoryTable 
-              stories={stories} 
-              onEdit={openModal} 
-              onDelete={handleDeleteInitiated}
-              currentPage={pages.stories}
-              totalItems={totals.stories}
-              pageSize={PAGE_SIZE}
-              onPageChange={handlePageChange}
-            />
-          )}
-          {activeTab === 'images' && (
-            <ImageTable 
-              images={images} 
-              onEdit={openModal} 
-              onDelete={handleDeleteInitiated}
-              currentPage={pages.images}
-              totalItems={totals.images}
-              pageSize={PAGE_SIZE}
-              onPageChange={handlePageChange}
-            />
-          )}
-          {activeTab === 'reading_practice' && (
-            <ReadingPracticeTable 
-              items={readingPractices} 
-              onDelete={handleDeleteInitiated} 
-              currentPage={pages.reading_practice}
-              totalItems={totals.reading_practice}
-              pageSize={PAGE_SIZE}
-              onPageChange={handlePageChange}
-            />
-          )}
         </div>
-      </div>
+      )}
 
-      {isModalOpen && (
+      {isModalOpen && activeTab !== 'branding' && (
         <AdminModal 
           activeTab={activeTab === 'reading_practice' ? 'stories' : activeTab} 
           editingItem={editingItem} 
