@@ -12,6 +12,7 @@ import GamesView from './views/GamesView';
 import GameDetailView from './views/GameDetailView';
 import AdminView from './views/AdminView';
 import LiveView from './views/LiveView';
+import InstallPWA from './components/InstallPWA';
 import { authService } from './services/authService';
 import { dataService, IMAGE_KEYS } from './services/dataService';
 
@@ -165,7 +166,12 @@ const App: React.FC = () => {
   }
 
   if (currentView === 'auth') {
-    return <AuthView onLogin={handleLogin} />;
+    return (
+      <>
+        <AuthView onLogin={handleLogin} />
+        <InstallPWA />
+      </>
+    );
   }
 
   return (
@@ -180,6 +186,8 @@ const App: React.FC = () => {
       >
         {renderView()}
       </Layout>
+      
+      <InstallPWA />
 
       <div className="fixed inset-0 flex items-center justify-center z-[9999] pointer-events-none">
         {expNotifications.map(notif => (
