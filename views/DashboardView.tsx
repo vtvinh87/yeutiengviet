@@ -84,7 +84,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ setView, user }) => {
         <div className="w-full md:w-1/2">
           <div 
             className="w-full aspect-[4/3] md:aspect-video bg-cover bg-center rounded-2xl shadow-md border-4 border-white dark:border-[#2d4234] animate-in zoom-in duration-1000"
-            style={{backgroundImage: `url("${images.hero}")`}}
+            style={{backgroundImage: images.hero ? `url("${images.hero}")` : undefined}}
           ></div>
         </div>
       </section>
@@ -177,12 +177,12 @@ const DashboardView: React.FC<DashboardViewProps> = ({ setView, user }) => {
   );
 };
 
-const FeatureCard: React.FC<{title: string; desc: string; icon: string; colorClass: string; imgUrl: string; onClick: () => void;}> = ({ title, desc, icon, colorClass, imgUrl, onClick }) => (
+const FeatureCard: React.FC<{title: string; desc: string; icon: string; colorClass: string; imgUrl: string | undefined; onClick: () => void;}> = ({ title, desc, icon, colorClass, imgUrl, onClick }) => (
   <button 
     onClick={onClick}
     className={`group relative flex flex-col text-left overflow-hidden rounded-[2rem] ${colorClass} border-2 border-transparent hover:border-primary/30 transition-all hover:shadow-2xl hover:-translate-y-2`}
   >
-    <div className="aspect-[4/3] w-full bg-cover bg-center group-hover:scale-110 transition-transform duration-700" style={{backgroundImage: `url("${imgUrl}")`}}></div>
+    <div className="aspect-[4/3] w-full bg-cover bg-center group-hover:scale-110 transition-transform duration-700" style={{backgroundImage: imgUrl ? `url("${imgUrl}")` : undefined}}></div>
     <div className="p-6 flex flex-col flex-1">
       <div className="size-12 rounded-2xl bg-white dark:bg-white/10 flex items-center justify-center text-primary shadow-sm mb-4 group-hover:bg-primary group-hover:text-text-main transition-colors">
         <span className="material-symbols-outlined text-3xl filled">{icon}</span>
