@@ -141,6 +141,21 @@ const GamesView: React.FC<GamesViewProps> = ({ setView, user, onAwardExp }) => {
     setDailyState(prev => ({ ...prev, open: true, loading: true, questions: [], currentIdx: 0, correctCount: 0, finished: false, feedback: null }));
     
     const ai = getAiInstance();
+    if (!ai) {
+       // Dữ liệu giả khi không có AI
+       const mockQuestions = [
+         { question: "Con gì kêu meo meo?", answer: "Con mèo", synonyms: ["Mèo"] },
+         { question: "1 + 1 bằng mấy?", answer: "2", synonyms: ["Hai"] },
+         { question: "Mặt trời mọc ở hướng nào?", answer: "Đông", synonyms: ["Hướng Đông"] },
+         { question: "Lá cờ Việt Nam màu gì?", answer: "Đỏ", synonyms: ["Màu đỏ", "Đỏ thắm"] },
+         { question: "Thủ đô của Việt Nam là gì?", answer: "Hà Nội", synonyms: ["TP Hà Nội"] }
+       ];
+       setTimeout(() => {
+         setDailyState(prev => ({ ...prev, questions: mockQuestions, loading: false }));
+       }, 1000);
+       return;
+    }
+
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',

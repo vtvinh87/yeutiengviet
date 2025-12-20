@@ -7,6 +7,20 @@ export const dictionaryService = {
   async defineWord(word: string): Promise<DictionaryEntry> {
     const ai = getAiInstance();
     
+    // Nếu không có AI, ném lỗi để UI xử lý hoặc trả về dữ liệu mẫu báo lỗi
+    if (!ai) {
+      return {
+        word: word,
+        type: "Thông báo",
+        category: "Hệ thống",
+        phonetic: "...",
+        definition: "Chưa thiết lập API Key nên cô giáo AI không thể tra từ này được.",
+        examples: ["Vui lòng kiểm tra biến môi trường VITE_API_KEY."],
+        synonyms: [],
+        image: "https://images.unsplash.com/photo-1555861496-0666c8981751?q=80&w=600&auto=format&fit=crop"
+      };
+    }
+    
     try {
       // 1. Get structured definition from Gemini 3 Flash
       const response = await ai.models.generateContent({

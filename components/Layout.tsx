@@ -21,6 +21,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, isDarkMo
   const isAdmin = user.role === 'admin';
   const isStoriesView = activeView === 'stories';
   const isLiveView = activeView === 'live';
+  // Cả Story và Live đều cần chế độ tràn màn hình (không padding)
   const isFullHeightView = isStoriesView || isLiveView;
 
   // Tính toán phần trăm EXP trong level hiện tại (giả định 100 EXP / Level)
@@ -152,7 +153,8 @@ const Layout: React.FC<LayoutProps> = ({ children, activeView, setView, isDarkMo
         user={user}
       />
 
-      <main className={`flex-1 w-full max-w-7xl mx-auto px-4 ${isStoriesView ? 'py-0 md:px-0 lg:px-0' : 'py-6 md:px-10 lg:px-20'}`}>
+      {/* Logic padding: Nếu là LiveView hoặc StoriesView thì p-0 để full màn hình, ngược lại thêm padding */}
+      <main className={`flex-1 w-full max-w-7xl mx-auto ${isFullHeightView ? 'p-0' : 'px-4 py-6 md:px-10 lg:px-20'}`}>
         {children}
       </main>
 

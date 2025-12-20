@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { LiveTeacherSession } from '../services/liveService';
+import { decodeAudioData } from '../services/audioUtils';
 
 const LiveView: React.FC = () => {
-  // Fix: Added 'unauthorized' to the status type to match the expected signature in LiveSessionHandlers.onStatusChange
   const [status, setStatus] = useState<'idle' | 'connecting' | 'open' | 'closed' | 'error' | 'unauthorized'>('idle');
   const [transcriptions, setTranscriptions] = useState<{ text: string, isUser: boolean }[]>([]);
   const [showConfirmEnd, setShowConfirmEnd] = useState(false);
@@ -12,6 +12,9 @@ const LiveView: React.FC = () => {
   const outputAudioCtxRef = useRef<AudioContext | null>(null);
   const nextStartTimeRef = useRef<number>(0);
   const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
+  
+  // Flag to track the start of the model's response to apply the thinking delay
+  const isFirstChunkOfResponseRef = useRef<boolean>(true);
 
   useEffect(() => {
     outputAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
@@ -23,15 +26,26 @@ const LiveView: React.FC = () => {
 
   const startSession = async () => {
     setTranscriptions([]);
+    isFirstChunkOfResponseRef.current = true;
     sessionRef.current = new LiveTeacherSession();
     await sessionRef.current.connect({
-      onAudioChunk: (buffer) => {
+      onAudioChunk: async (data: Uint8Array) => {
         if (!outputAudioCtxRef.current) return;
         const ctx = outputAudioCtxRef.current;
+        
+        // Decode raw bytes using persistent context
+        const buffer = await decodeAudioData(data, ctx, 24000, 1);
+        
         const source = ctx.createBufferSource();
         source.buffer = buffer;
         source.connect(ctx.destination);
         
+        // UX Requirement: Add 2.5s delay for the first chunk of a model turn to allow buffering and simulate "thinking"
+        if (isFirstChunkOfResponseRef.current) {
+          nextStartTimeRef.current = ctx.currentTime + 2.5;
+          isFirstChunkOfResponseRef.current = false;
+        }
+
         const startTime = Math.max(nextStartTimeRef.current, ctx.currentTime);
         source.start(startTime);
         nextStartTimeRef.current = startTime + buffer.duration;
@@ -45,8 +59,14 @@ const LiveView: React.FC = () => {
         });
         sourcesRef.current.clear();
         nextStartTimeRef.current = 0;
+        isFirstChunkOfResponseRef.current = true;
       },
       onTranscription: (text, isUser) => {
+        if (isUser) {
+          // When user speaks, we reset the first chunk flag so the next AI response is delayed
+          isFirstChunkOfResponseRef.current = true;
+        }
+
         setTranscriptions(prev => {
           if (prev.length > 0 && prev[prev.length - 1].isUser === isUser) {
             const lastMessage = prev[prev.length - 1];
@@ -73,6 +93,7 @@ const LiveView: React.FC = () => {
     });
     sourcesRef.current.clear();
     setShowConfirmEnd(false);
+    isFirstChunkOfResponseRef.current = true;
   };
 
   const handleEndClick = (e: React.MouseEvent) => {
@@ -82,7 +103,8 @@ const LiveView: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-180px)] -m-4 md:-m-10 lg:-m-20 bg-[#0d1b12] animate-in fade-in duration-500 overflow-hidden relative">
+    // Updated container: Removed negative margins, adjusted height to accommodate header (approx 74px)
+    <div className="flex flex-col w-full h-[calc(100vh-74px)] bg-[#0d1b12] animate-in fade-in duration-500 overflow-hidden relative">
       <div className="flex-1 flex flex-col md:flex-row h-full">
         {/* Left Side: Teacher Visualization */}
         <div className="md:w-1/2 flex flex-col items-center justify-center p-8 bg-gradient-to-b from-[#13ec5b]/5 to-transparent relative border-r border-white/5">
@@ -107,8 +129,7 @@ const LiveView: React.FC = () => {
               {status === 'connecting' && "Cô đang kết nối, bé chờ xíu nha..."}
               {status === 'open' && "Cô đang lắng nghe bé đây!"}
               {status === 'closed' && "Hẹn gặp lại bé lần sau nhé!"}
-              {/* Fix: Added messages for error and unauthorized statuses for better UX */}
-              {(status === 'error' || status === 'unauthorized') && "Ối! Gặp lỗi kết nối rồi. Bé hãy kiểm tra lại mạng hoặc khóa API nhé!"}
+              {(status === 'error' || status === 'unauthorized') && "Ối! Gặp lỗi kết nối. Bé kiểm tra lại mạng hoặc khóa API nhé!"}
             </p>
 
             <div className="flex justify-center">

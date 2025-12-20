@@ -6,6 +6,10 @@ import { decodeBase64, decodeAudioData } from "./audioUtils";
 export const aiTeacherService = {
   async chat(message: string): Promise<string> {
     const aiClient = getAiInstance();
+    
+    if (!aiClient) {
+      return "Cô chưa được kết nối với hệ thống AI (Thiếu API Key), bé thông cảm nhé!";
+    }
 
     try {
       const response = await aiClient.models.generateContent({
@@ -24,6 +28,11 @@ export const aiTeacherService = {
 
   async generateSpeechBuffer(text: string, ctx: AudioContext): Promise<AudioBuffer | null> {
     const aiClient = getAiInstance();
+    
+    if (!aiClient) {
+      console.warn("Cannot generate speech: No AI Client");
+      return null;
+    }
 
     try {
       const response = await aiClient.models.generateContent({
@@ -56,6 +65,15 @@ export const aiTeacherService = {
 
   async speak(text: string): Promise<void> {
     try {
+      // Fallback to browser TTS immediately if no AI client is available (avoid trying to create context unnecessarily)
+      const aiClient = getAiInstance();
+      if (!aiClient) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'vi-VN';
+        window.speechSynthesis.speak(utterance);
+        return;
+      }
+
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
       const buffer = await this.generateSpeechBuffer(text, ctx);
       if (buffer) {
@@ -70,6 +88,10 @@ export const aiTeacherService = {
       }
     } catch (e) {
       console.error("Speak failed", e);
+      // Ultimate fallback
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'vi-VN';
+      window.speechSynthesis.speak(utterance);
     }
   }
 };

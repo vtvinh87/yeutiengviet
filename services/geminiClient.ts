@@ -1,12 +1,17 @@
-
 import { GoogleGenAI } from "@google/genai";
 
 /**
  * Khởi tạo GoogleGenAI client instance.
- * Tuân thủ quy định sử dụng process.env.API_KEY.
- * Tạo instance mới mỗi lần gọi để đảm bảo sử dụng khóa cập nhật nhất.
+ * Sử dụng import.meta.env.VITE_API_KEY cho môi trường Vite.
+ * Trả về null nếu không có key để các service khác có thể fallback.
  */
 export const getAiInstance = () => {
-  // Fix: Solely rely on process.env.API_KEY and use it directly when initializing
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = (import.meta as any).env.VITE_API_KEY;
+  
+  if (!apiKey) {
+    console.warn("API Key is missing (VITE_API_KEY). AI features will be disabled.");
+    return null;
+  }
+  
+  return new GoogleGenAI({ apiKey });
 };

@@ -55,12 +55,16 @@ const AdminModal: React.FC<AdminModalProps> = ({ activeTab, editingItem, onClose
       return;
     }
 
+    const ai = getAiInstance();
+    if (!ai) {
+      alert("Chưa cấu hình API Key trong VITE_API_KEY. Không thể sử dụng tính năng AI.");
+      return;
+    }
+
     setIsGeneratingAudio(true);
     setAudioStatus('Đang tạo audio...');
 
     try {
-      const ai = getAiInstance();
-      
       const summaryResult = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Tóm tắt ngắn gọn câu chuyện "${title}" trong 1-2 câu cho trẻ em. Nội dung: ${content}`,

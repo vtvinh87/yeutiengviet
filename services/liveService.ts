@@ -1,10 +1,9 @@
 
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import { decodeBase64, decodeAudioData } from './audioUtils';
-// Fix: Corrected import to getAiInstance from geminiClient and removed circular self-import of encodeBase64
+import { decodeBase64 } from './audioUtils';
 import { getAiInstance } from './geminiClient';
 
-// Helper for Base64 encoding - Di chuyển ra ngoài nếu cần
+// Helper for Base64 encoding
 export function encodeBase64(bytes: Uint8Array): string {
   let binary = '';
   const len = bytes.byteLength;
@@ -15,7 +14,7 @@ export function encodeBase64(bytes: Uint8Array): string {
 }
 
 export interface LiveSessionHandlers {
-  onAudioChunk: (buffer: AudioBuffer) => void;
+  onAudioChunk: (data: Uint8Array) => void;
   onInterrupted: () => void;
   onTranscription: (text: string, isUser: boolean) => void;
   onStatusChange: (status: 'connecting' | 'open' | 'closed' | 'error' | 'unauthorized') => void;
@@ -32,7 +31,6 @@ export class LiveTeacherSession {
     
     if (!aiClient) {
       handlers.onStatusChange('error');
-      alert("Tính năng trò chuyện trực tiếp yêu cầu API Key. Vui lòng kiểm tra cấu hình.");
       return;
     }
 
@@ -69,11 +67,10 @@ export class LiveTeacherSession {
             this.scriptProcessor.connect(this.inputAudioContext!.destination);
           },
           onmessage: async (message: LiveServerMessage) => {
+            // Passing raw data to avoid recreating AudioContext inside onmessage
             if (message.serverContent?.modelTurn?.parts[0]?.inlineData?.data) {
               const audioData = decodeBase64(message.serverContent.modelTurn.parts[0].inlineData.data);
-              const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-              const buffer = await decodeAudioData(audioData, ctx, 24000, 1);
-              handlers.onAudioChunk(buffer);
+              handlers.onAudioChunk(audioData);
             }
 
             if (message.serverContent?.interrupted) {
@@ -102,7 +99,7 @@ export class LiveTeacherSession {
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } }
           },
-          systemInstruction: 'Bạn là cô giáo dạy Tiếng Việt hiền hậu cho học sinh tiểu học. Hãy trả lời các bé thật dễ mến, ngắn gọn, và khuyến khích các bé học tập.'
+          systemInstruction: 'Bạn là cô giáo dạy Tiếng Việt hiền hậu cho học sinh tiểu học. Hãy trả lời các bé thật dễ mến, ngắn gọn, và khuyến khích các bé học tập. Khi bé hỏi hoặc nói xong, hãy chờ một lát rồi mới trả lời để tạo cảm giác tự nhiên.'
         }
       });
     } catch (err) {
