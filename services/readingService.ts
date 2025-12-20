@@ -74,7 +74,8 @@ export const readingService = {
       } catch (imgErr) {
         console.warn("AI Image generation failed, falling back to database or placeholder", imgErr);
         const saved = await this.getRandomSavedExercise();
-        if (saved) return { title: content.title, text: content.text, imageUrl: saved.image_url, isGenerated: true };
+        // Fix: content is available here, but fallback to saved content is safer if img generation failed
+        if (saved) return { title: saved.title, text: saved.text, imageUrl: saved.image_url, isGenerated: false };
       }
 
       return {
@@ -86,6 +87,7 @@ export const readingService = {
     } catch (error) {
       console.error("Generate AI Exercise Error:", error);
       const saved = await this.getRandomSavedExercise();
+      // Fix: 'content' is out of scope here. Using 'saved' properties directly for the fallback.
       if (saved) return { title: saved.title, text: saved.text, imageUrl: saved.image_url, isGenerated: false };
       return { 
         title: "Bài tập đọc", 
@@ -129,13 +131,27 @@ export const readingService = {
     }
   },
 
-  async getSavedExercises(): Promise<ReadingPractice[]> {
+  async getSavedExercises(page: number = 1, pageSize: number = 5): Promise<ReadingPractice[]> {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
     const { data, error } = await supabase
       .from('reading_practice')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(from, to);
+      
     if (error) return [];
     return data;
+  },
+
+  async getSavedExercisesCount(): Promise<number> {
+    const { count, error } = await supabase
+      .from('reading_practice')
+      .select('*', { count: 'exact', head: true });
+    
+    if (error) return 0;
+    return count || 0;
   },
 
   async getRandomSavedExercise(): Promise<ReadingPractice | null> {
@@ -183,19 +199,22 @@ export const readingService = {
     if (!aiClient) return null;
 
     try {
+      // Fix: Updated contents to use correct multi-part object format { parts: [...] }
       const response = await aiClient.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: [
-          {
-            inlineData: {
-              mimeType: 'audio/webm',
-              data: audioBase64,
+        contents: {
+          parts: [
+            {
+              inlineData: {
+                mimeType: 'audio/webm',
+                data: audioBase64,
+              },
             },
-          },
-          {
-            text: `NHIỆM VỤ: Chuyển âm thanh thành văn bản, so sánh với mẫu: "${targetText}", trả về JSON accuracy và feedback.`
-          }
-        ],
+            {
+              text: `NHIỆM VỤ: Chuyển âm thanh thành văn bản, so sánh với mẫu: "${targetText}", trả về JSON accuracy và feedback.`
+            }
+          ]
+        },
         config: {
           responseMimeType: "application/json",
           responseSchema: {

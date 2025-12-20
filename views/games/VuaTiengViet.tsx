@@ -22,14 +22,13 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
   const [challenges, setChallenges] = useState<WordChallenge[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [score, setScore] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(180); // Tăng lên 180 giây (3 phút)
+  const [timeLeft, setTimeLeft] = useState(600); 
   const [shuffledLetters, setShuffledLetters] = useState<{ char: string; originalIdx: number; used: boolean }[]>([]);
   const [userInput, setUserInput] = useState<{ char: string; fromIdx: number }[]>([]);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   
-  // Fix: Replaced NodeJS.Timeout with any because the application runs in a browser environment where setInterval returns a number
   const timerRef = useRef<any>(null);
-  const TOTAL_TIME = 180;
+  const TOTAL_TIME = 600; // 10 phút
 
   // Xáo trộn chuỗi
   const shuffleString = (str: string) => {
@@ -44,7 +43,12 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
   // Gọi AI tạo bộ từ vựng giáo dục
   const fetchChallenges = async () => {
     setGameState('loading');
-    setTimeLeft(TOTAL_TIME); // Đặt lại thời gian khi bắt đầu nạp câu hỏi
+    
+    // Reset tiến trình về ban đầu
+    setCurrentIdx(0);
+    setScore(0);
+    setTimeLeft(TOTAL_TIME);
+    
     const ai = getAiInstance();
     
     // Dữ liệu dự phòng nếu AI gặp sự cố
@@ -135,6 +139,13 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
     const newShuffled = [...shuffledLetters];
     newShuffled[removed.fromIdx].used = false;
     setShuffledLetters(newShuffled);
+  };
+
+  const handleReset = () => {
+    if (isCorrect !== null) return;
+    const resetShuffled = shuffledLetters.map(s => ({ ...s, used: false }));
+    setShuffledLetters(resetShuffled);
+    setUserInput([]);
   };
 
   const checkAnswer = () => {
@@ -276,7 +287,11 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
 
           <div className="flex flex-col gap-4">
             <button 
-              onClick={() => setGameState('landing')} 
+              onClick={() => {
+                setCurrentIdx(0);
+                setScore(0);
+                setGameState('landing');
+              }} 
               className="h-16 bg-primary text-[#102216] font-black rounded-full shadow-lg hover:bg-primary-hover transition-all text-xl"
             >
               Thử lại lần nữa
@@ -314,7 +329,7 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
         </div>
 
         <div className="flex flex-col items-center">
-          <div className={`text-3xl font-black tabular-nums ${timeLeft < 15 ? 'text-red-500 animate-bounce' : 'text-primary'}`}>
+          <div className={`text-3xl font-black tabular-nums ${timeLeft < 30 ? 'text-red-500 animate-bounce' : 'text-primary'}`}>
             {formatTime(timeLeft)}
           </div>
           <div className="w-24 h-2 bg-gray-100 dark:bg-white/10 rounded-full mt-1 overflow-hidden">
@@ -390,11 +405,24 @@ const VuaTiengViet: React.FC<VuaTiengVietProps> = ({ setView, user, onAwardExp }
         </div>
 
         {/* Actions */}
-        <div className="w-full flex justify-center mt-4">
+        <div className="w-full flex flex-wrap justify-center gap-4 mt-4">
+          <button 
+            onClick={handleReset}
+            disabled={userInput.length === 0 || isCorrect !== null}
+            className={`h-20 px-10 font-black rounded-full shadow-lg transition-all transform active:scale-95 text-xl flex items-center gap-2 border-2 ${
+              userInput.length > 0 && isCorrect === null
+              ? 'border-red-500/50 text-red-500 hover:bg-red-500/5' 
+              : 'border-gray-100 dark:border-white/5 text-gray-400 cursor-not-allowed opacity-30'
+            }`}
+          >
+            <span className="material-symbols-outlined">restart_alt</span>
+            ĐẶT LẠI
+          </button>
+
           <button 
             onClick={checkAnswer}
             disabled={userInput.length !== shuffledLetters.length || isCorrect !== null}
-            className={`h-20 px-20 font-black rounded-full shadow-2xl transition-all transform hover:scale-105 active:scale-95 text-2xl flex items-center gap-4 ${
+            className={`h-20 px-16 font-black rounded-full shadow-2xl transition-all transform hover:scale-105 active:scale-95 text-2xl flex items-center gap-4 ${
               userInput.length === shuffledLetters.length && isCorrect === null
               ? 'bg-primary text-[#102216] shadow-primary/40' 
               : 'bg-gray-100 dark:bg-white/5 text-gray-400 cursor-not-allowed'

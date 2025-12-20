@@ -13,28 +13,34 @@ interface ErrorBoundaryState {
 }
 
 /**
- * Fix: Refactored ErrorBoundary to resolve TypeScript inheritance errors.
- * Using Component directly from the react package and using class properties 
- * to ensure 'state' and 'props' are correctly recognized by the type checker.
+ * Fix: Changed inheritance to use 'Component' directly from 'react' and added explicit property declarations.
+ * This resolves the TypeScript errors where 'state' and 'props' were not recognized as members of the class.
+ * Using the generic 'Component<P, S>' with direct import often improves type resolution in strict environments.
  */
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  // Fix: Initializing state as a class property to ensure it's correctly recognized as existing on 'this'
-  public state: ErrorBoundaryState = {
-    hasError: false
-  };
+  // Fix: Explicitly declare the state property to satisfy the TypeScript compiler's inheritance checks
+  public state: ErrorBoundaryState;
+
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    // Fix: Initializing the explicitly declared state property within the constructor
+    this.state = {
+      hasError: false
+    };
+  }
 
   // Fix: Static method for error boundary state updates
   public static getDerivedStateFromError(): ErrorBoundaryState {
     return { hasError: true };
   }
 
-  // Fix: Correctly typed lifecycle method for catching errors
+  // Fix: Correctly typed lifecycle method for catching errors in child components
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
   }
 
   public render() {
-    // Fix: Accessing state via 'this' which is now correctly recognized through inheritance
+    // Fix: Accessing state via 'this.state' which is now explicitly recognized by the compiler
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-background-dark flex flex-col items-center justify-center p-6 text-center">
@@ -53,7 +59,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       );
     }
     
-    // Fix: Accessing children via 'this.props' which is now correctly inherited and recognized
+    // Fix: Accessing children via 'this.props' which is inherited from the generic Component class
     return this.props.children;
   }
 }

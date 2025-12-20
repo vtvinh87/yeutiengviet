@@ -22,6 +22,23 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
   const [readingPractices, setReadingPractices] = useState<ReadingPractice[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Pagination states for all tabs
+  const [pages, setPages] = useState({
+    users: 1,
+    stories: 1,
+    images: 1,
+    reading_practice: 1
+  });
+
+  const [totals, setTotals] = useState({
+    users: 0,
+    stories: 0,
+    images: 0,
+    reading_practice: 0
+  });
+
+  const PAGE_SIZE = 5;
+
   const [editingItem, setEditingItem] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{id: string, name: string} | null>(null);
@@ -41,27 +58,47 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
 
   useEffect(() => {
     refreshData();
-  }, [activeTab]);
+  }, [activeTab, pages]);
 
   const refreshData = async () => {
     setLoading(true);
     try {
       if (activeTab === 'users') {
-        const u = await authService.getAllUsers();
+        const [u, count] = await Promise.all([
+          authService.getAllUsers(pages.users, PAGE_SIZE),
+          authService.getUsersCount()
+        ]);
         setUsers(u);
+        setTotals(prev => ({ ...prev, users: count }));
       } else if (activeTab === 'stories') {
-        const s = await dataService.getStories();
+        const [s, count] = await Promise.all([
+          dataService.getStories(pages.stories, PAGE_SIZE),
+          dataService.getStoriesCount()
+        ]);
         setStories(s);
+        setTotals(prev => ({ ...prev, stories: count }));
       } else if (activeTab === 'images') {
-        const i = await dataService.getImages();
+        const [i, count] = await Promise.all([
+          dataService.getImages(pages.images, PAGE_SIZE),
+          dataService.getImagesCount()
+        ]);
         setImages(i);
+        setTotals(prev => ({ ...prev, images: count }));
       } else if (activeTab === 'reading_practice') {
-        const r = await readingService.getSavedExercises();
+        const [r, count] = await Promise.all([
+          readingService.getSavedExercises(pages.reading_practice, PAGE_SIZE),
+          readingService.getSavedExercisesCount()
+        ]);
         setReadingPractices(r);
+        setTotals(prev => ({ ...prev, reading_practice: count }));
       }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (page: number) => {
+    setPages(prev => ({ ...prev, [activeTab]: page }));
   };
 
   const handleSave = async (data: any) => {
@@ -89,20 +126,32 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
     
     setLoading(true);
     const id = itemToDelete.id;
-    setItemToDelete(null); // Đóng modal xác nhận ngay
+    setItemToDelete(null);
 
     try {
       if (activeTab === 'users') {
         await authService.deleteUser(id);
       } else if (activeTab === 'stories') {
-        // Khi xóa Story, ta cũng nên xóa audio nếu có (dataService.deleteStory nên được cập nhật tương tự readingService)
         await dataService.deleteStory(id);
       } else if (activeTab === 'images') {
         await dataService.deleteImage(id);
       } else if (activeTab === 'reading_practice') {
         await readingService.deleteExercise(id);
       }
-      await refreshData();
+      
+      // Kiểm tra nếu xóa mục cuối cùng ở trang hiện tại, quay lại trang trước
+      const currentItemsCount = {
+        users: users.length,
+        stories: stories.length,
+        images: images.length,
+        reading_practice: readingPractices.length
+      }[activeTab];
+
+      if (currentItemsCount === 1 && pages[activeTab] > 1) {
+        handlePageChange(pages[activeTab] - 1);
+      } else {
+        await refreshData();
+      }
     } catch (error) {
       console.error("Lỗi khi xóa:", error);
       alert("Gặp lỗi khi xóa dữ liệu. Vui lòng thử lại!");
@@ -173,10 +222,49 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
           </div>
         )}
         <div className="p-2 overflow-x-auto custom-scrollbar">
-          {activeTab === 'users' && <UserTable users={users} onEdit={openModal} onDelete={handleDeleteInitiated} />}
-          {activeTab === 'stories' && <StoryTable stories={stories} onEdit={openModal} onDelete={handleDeleteInitiated} />}
-          {activeTab === 'images' && <ImageTable images={images} onEdit={openModal} onDelete={handleDeleteInitiated} />}
-          {activeTab === 'reading_practice' && <ReadingPracticeTable items={readingPractices} onDelete={handleDeleteInitiated} />}
+          {activeTab === 'users' && (
+            <UserTable 
+              users={users} 
+              onEdit={openModal} 
+              onDelete={handleDeleteInitiated}
+              currentPage={pages.users}
+              totalItems={totals.users}
+              pageSize={PAGE_SIZE}
+              onPageChange={handlePageChange}
+            />
+          )}
+          {activeTab === 'stories' && (
+            <StoryTable 
+              stories={stories} 
+              onEdit={openModal} 
+              onDelete={handleDeleteInitiated}
+              currentPage={pages.stories}
+              totalItems={totals.stories}
+              pageSize={PAGE_SIZE}
+              onPageChange={handlePageChange}
+            />
+          )}
+          {activeTab === 'images' && (
+            <ImageTable 
+              images={images} 
+              onEdit={openModal} 
+              onDelete={handleDeleteInitiated}
+              currentPage={pages.images}
+              totalItems={totals.images}
+              pageSize={PAGE_SIZE}
+              onPageChange={handlePageChange}
+            />
+          )}
+          {activeTab === 'reading_practice' && (
+            <ReadingPracticeTable 
+              items={readingPractices} 
+              onDelete={handleDeleteInitiated} 
+              currentPage={pages.reading_practice}
+              totalItems={totals.reading_practice}
+              pageSize={PAGE_SIZE}
+              onPageChange={handlePageChange}
+            />
+          )}
         </div>
       </div>
 
@@ -189,7 +277,6 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
         />
       )}
 
-      {/* Modal Xác nhận Xóa Tùy chỉnh */}
       {itemToDelete && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setItemToDelete(null)}></div>
@@ -200,7 +287,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user }) => {
                 </div>
                 <div className="space-y-2">
                   <h4 className="text-2xl font-black text-white">Xác nhận xóa?</h4>
-                  <p className="text-[#4c9a66] font-bold">Bạn có chắc chắn muốn xóa bài tập <span className="text-white">"{itemToDelete.name}"</span> không? Hành động này sẽ xóa cả hình ảnh và âm thanh đi kèm.</p>
+                  <p className="text-[#4c9a66] font-bold">Bạn có chắc chắn muốn xóa <span className="text-white">"{itemToDelete.name}"</span> không?</p>
                 </div>
                 <div className="flex flex-col w-full gap-3">
                    <button 

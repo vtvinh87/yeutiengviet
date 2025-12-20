@@ -116,15 +116,27 @@ export const authService = {
     return profile;
   },
 
-  // Fix: Added getAllUsers method for Admin View
-  async getAllUsers(): Promise<User[]> {
+  async getAllUsers(page: number = 1, pageSize: number = 5): Promise<User[]> {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .order('name', { ascending: true });
+      .order('name', { ascending: true })
+      .range(from, to);
     
     if (error) throw error;
     return data || [];
+  },
+
+  async getUsersCount(): Promise<number> {
+    const { count, error } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true });
+    
+    if (error) return 0;
+    return count || 0;
   },
 
   async updateProfile(updatedUser: User): Promise<void> {
@@ -145,7 +157,6 @@ export const authService = {
     if (error) throw error;
   },
 
-  // Fix: Added deleteUser method for Admin View
   async deleteUser(id: string): Promise<void> {
     const { error } = await supabase
       .from('profiles')
@@ -169,7 +180,6 @@ export const authService = {
   },
 
   async addExperience(userId: string, amount: number): Promise<User | null> {
-    // Lấy dữ liệu mới nhất từ DB
     const { data: profile, error: fetchError } = await supabase
       .from('profiles')
       .select('exp, level, stars')
@@ -184,7 +194,6 @@ export const authService = {
     const newTotalExp = currentExp + amount;
     const newLevel = Math.floor(newTotalExp / 100) + 1;
     
-    // Cộng 1 sao cho mỗi 20 EXP nhận được
     const bonusStars = Math.floor(amount / 20);
     const newStars = currentStars + bonusStars;
 

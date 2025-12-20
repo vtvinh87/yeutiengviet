@@ -16,7 +16,6 @@ export const IMAGE_KEYS = {
   GAME_DUOI_HINH_BAT_CHU: 'GAME_DUOI_HINH_BAT_CHU',
 };
 
-// Fallback data if DB is empty
 const DEFAULT_STORIES: Story[] = [
   {
     id: '1',
@@ -30,15 +29,19 @@ const DEFAULT_STORIES: Story[] = [
 ];
 
 export const dataService = {
-  async getStories(): Promise<Story[]> {
+  async getStories(page: number = 1, pageSize: number = 5): Promise<Story[]> {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
     try {
       const { data, error } = await supabase
         .from('stories')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (error) throw error;
-      if (!data || data.length === 0) return DEFAULT_STORIES;
+      if (!data || data.length === 0) return (page === 1 ? DEFAULT_STORIES : []);
       
       return data.map((item: any) => ({
         id: item.id,
@@ -51,8 +54,17 @@ export const dataService = {
       }));
     } catch (err) {
       console.error("Lỗi getStories:", err);
-      return DEFAULT_STORIES;
+      return (page === 1 ? DEFAULT_STORIES : []);
     }
+  },
+
+  async getStoriesCount(): Promise<number> {
+    const { count, error } = await supabase
+      .from('stories')
+      .select('*', { count: 'exact', head: true });
+    
+    if (error) return 0;
+    return count || 0;
   },
 
   async saveStory(story: Story) {
@@ -65,7 +77,6 @@ export const dataService = {
       audio_url: story.audioUrl
     };
 
-    // Chỉ gửi ID nếu nó là một UUID hợp lệ (độ dài > 10)
     if (story.id && story.id !== 'new' && story.id.length > 10) {
       dbData.id = story.id;
     }
@@ -83,7 +94,6 @@ export const dataService = {
   },
 
   async deleteStory(id: string) {
-    // 1. Lấy thông tin story trước khi xóa để có URL file
     const { data: item, error: fetchError } = await supabase
       .from('stories')
       .select('image, audio_url')
@@ -91,11 +101,7 @@ export const dataService = {
       .single();
 
     if (!fetchError && item) {
-      // 2. Xóa các file vật lý trên Storage nếu chúng thuộc hệ thống lưu trữ của mình
       if (item.image && item.image.includes('supabase.co')) {
-        // Tùy vào việc story image được upload vào bucket nào, mặc định thử bucket 'admin-images' hoặc bucket chứa story media
-        // Nếu không chắc chắn bucket, ta có thể bỏ qua việc xóa ảnh nếu nó dùng chung
-        // Tuy nhiên, nếu ảnh được upload riêng cho story, hãy xóa nó.
         await storageService.deleteFileFromUrl('admin-images', item.image);
       }
       
@@ -104,18 +110,30 @@ export const dataService = {
       }
     }
 
-    // 3. Xóa bản ghi trong Database
     const { error } = await supabase.from('stories').delete().eq('id', id);
     if (error) throw error;
   },
 
-  async getImages(): Promise<AdminImage[]> {
+  async getImages(page: number = 1, pageSize: number = 5): Promise<AdminImage[]> {
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
     const { data, error } = await supabase
       .from('admin_images')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(from, to);
     if (error || !data) return [];
     return data;
+  },
+
+  async getImagesCount(): Promise<number> {
+    const { count, error } = await supabase
+      .from('admin_images')
+      .select('*', { count: 'exact', head: true });
+    
+    if (error) return 0;
+    return count || 0;
   },
 
   async saveImage(image: AdminImage) {
@@ -126,12 +144,9 @@ export const dataService = {
       key: image.key
     };
 
-    // Chỉ gửi ID nếu nó là một UUID hợp lệ
     if (image.id && image.id !== 'new' && image.id.length > 10) {
       dbData.id = image.id;
     }
-
-    console.log("Đang đồng bộ Image với Database:", dbData);
 
     const { data, error } = await supabase
       .from('admin_images')
@@ -146,13 +161,11 @@ export const dataService = {
   },
 
   async deleteImage(id: string) {
-    // 1. Lấy thông tin trước khi xóa
     const { data: item } = await supabase.from('admin_images').select('url').eq('id', id).single();
     if (item && item.url) {
       await storageService.deleteFileFromUrl('admin-images', item.url);
     }
 
-    // 2. Xóa DB
     const { error } = await supabase.from('admin_images').delete().eq('id', id);
     if (error) throw error;
   },

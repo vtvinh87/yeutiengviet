@@ -3,10 +3,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { LiveTeacherSession } from '../services/liveService';
 
 const LiveView: React.FC = () => {
-  // Fix: Added 'unauthorized' to the status type to match the expected signature in LiveSessionHandlers.onStatusChange
   const [status, setStatus] = useState<'idle' | 'connecting' | 'open' | 'closed' | 'error' | 'unauthorized'>('idle');
   const [transcriptions, setTranscriptions] = useState<{ text: string, isUser: boolean }[]>([]);
   const [showConfirmEnd, setShowConfirmEnd] = useState(false);
+  const [hasKey, setHasKey] = useState<boolean>(true);
   
   const sessionRef = useRef<LiveTeacherSession | null>(null);
   const outputAudioCtxRef = useRef<AudioContext | null>(null);
@@ -15,13 +15,43 @@ const LiveView: React.FC = () => {
 
   useEffect(() => {
     outputAudioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+    
+    // Kiểm tra xem đã có API Key chưa (từ env hoặc đã chọn qua dialog)
+    const checkKey = async () => {
+      if (typeof window !== 'undefined' && (window as any).aistudio) {
+        const selected = await (window as any).aistudio.hasSelectedApiKey();
+        setHasKey(!!process.env.API_KEY || selected);
+      } else {
+        setHasKey(!!process.env.API_KEY);
+      }
+    };
+    checkKey();
+
     return () => {
       stopSession();
       outputAudioCtxRef.current?.close();
     };
   }, []);
 
+  const handleOpenSelectKey = async () => {
+    if (typeof window !== 'undefined' && (window as any).aistudio) {
+      await (window as any).aistudio.openSelectKey();
+      // Theo hướng dẫn: giả định chọn khóa thành công và tiếp tục
+      setHasKey(true);
+      setStatus('idle');
+    }
+  };
+
   const startSession = async () => {
+    // Nếu chưa có khóa, không cho phép bắt đầu và hiển thị UI chọn khóa
+    if (!process.env.API_KEY && typeof window !== 'undefined' && (window as any).aistudio) {
+      const selected = await (window as any).aistudio.hasSelectedApiKey();
+      if (!selected) {
+        setHasKey(false);
+        return;
+      }
+    }
+
     setTranscriptions([]);
     sessionRef.current = new LiveTeacherSession();
     await sessionRef.current.connect({
@@ -60,7 +90,14 @@ const LiveView: React.FC = () => {
           return [...prev, { text, isUser }];
         });
       },
-      onStatusChange: (s) => setStatus(s)
+      onStatusChange: (s) => {
+        setStatus(s);
+        // Nếu lỗi do không tìm thấy thực thể (thường là lỗi API Key/Project)
+        if (s === 'error' || s === 'unauthorized') {
+          // Xử lý race condition hoặc lỗi project: yêu cầu chọn lại khóa
+          setHasKey(false);
+        }
+      }
     });
   };
 
@@ -100,36 +137,64 @@ const LiveView: React.FC = () => {
             )}
           </div>
           
-          <div className="text-center z-10">
+          <div className="text-center z-10 max-w-md">
             <h2 className="text-4xl font-black mb-2 text-white">Cô Giáo AI</h2>
-            <p className="text-[#4c9a66] font-bold text-lg mb-10">
-              {status === 'idle' && "Nhấn 'Bắt đầu' để trò chuyện cùng cô giáo nhé!"}
-              {status === 'connecting' && "Cô đang kết nối, bé chờ xíu nha..."}
-              {status === 'open' && "Cô đang lắng nghe bé đây!"}
-              {status === 'closed' && "Hẹn gặp lại bé lần sau nhé!"}
-              {/* Fix: Added messages for error and unauthorized statuses for better UX */}
-              {(status === 'error' || status === 'unauthorized') && "Ối! Gặp lỗi kết nối rồi. Bé hãy kiểm tra lại mạng hoặc khóa API nhé!"}
-            </p>
+            
+            {!hasKey ? (
+              <div className="bg-white/5 border border-primary/20 p-6 rounded-[2rem] animate-in zoom-in duration-300">
+                <p className="text-primary font-bold text-lg mb-4">
+                  Cần thiết lập khóa API để trò chuyện
+                </p>
+                <p className="text-gray-400 text-sm mb-6">
+                  Để sử dụng tính năng AI trực tiếp, bé cần chọn một Khóa API từ dự án Google Cloud đã bật thanh toán.
+                </p>
+                <button 
+                  onClick={handleOpenSelectKey}
+                  className="w-full h-14 bg-primary hover:bg-primary-hover text-[#0d1b12] font-black rounded-full shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3"
+                >
+                  <span className="material-symbols-outlined filled">key</span>
+                  Thiết lập API Key
+                </button>
+                <a 
+                  href="https://ai.google.dev/gemini-api/docs/billing" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-block mt-4 text-xs text-primary/60 hover:text-primary transition-colors underline"
+                >
+                  Tìm hiểu về thanh toán API
+                </a>
+              </div>
+            ) : (
+              <>
+                <p className="text-[#4c9a66] font-bold text-lg mb-10">
+                  {status === 'idle' && "Nhấn 'Bắt đầu' để trò chuyện cùng cô giáo nhé!"}
+                  {status === 'connecting' && "Cô đang kết nối, bé chờ xíu nha..."}
+                  {status === 'open' && "Cô đang lắng nghe bé đây!"}
+                  {status === 'closed' && "Hẹn gặp lại bé lần sau nhé!"}
+                  {(status === 'error' || status === 'unauthorized') && "Ối! Gặp lỗi kết nối. Bé hãy kiểm tra lại thiết lập khóa nhé!"}
+                </p>
 
-            <div className="flex justify-center">
-              {status === 'open' ? (
-                <button 
-                  onClick={handleEndClick}
-                  className="h-16 px-12 bg-[#e14b4b] hover:bg-[#ff5555] text-white font-black rounded-full shadow-2xl transition-all active:scale-95 flex items-center gap-3 group relative z-50 overflow-visible"
-                >
-                  <span className="material-symbols-outlined filled text-2xl">stop</span>
-                  Kết thúc
-                </button>
-              ) : (
-                <button 
-                  onClick={startSession}
-                  className="h-16 px-12 bg-primary hover:bg-primary-hover text-[#0d1b12] font-black rounded-full shadow-2xl transition-all active:scale-95 flex items-center gap-3 group"
-                >
-                  <span className="material-symbols-outlined filled text-2xl">mic</span>
-                  Bắt đầu trò chuyện
-                </button>
-              )}
-            </div>
+                <div className="flex justify-center">
+                  {status === 'open' ? (
+                    <button 
+                      onClick={handleEndClick}
+                      className="h-16 px-12 bg-[#e14b4b] hover:bg-[#ff5555] text-white font-black rounded-full shadow-2xl transition-all active:scale-95 flex items-center gap-3 group relative z-50 overflow-visible"
+                    >
+                      <span className="material-symbols-outlined filled text-2xl">stop</span>
+                      Kết thúc
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={startSession}
+                      className="h-16 px-12 bg-primary hover:bg-primary-hover text-[#0d1b12] font-black rounded-full shadow-2xl transition-all active:scale-95 flex items-center gap-3 group"
+                    >
+                      <span className="material-symbols-outlined filled text-2xl">mic</span>
+                      Bắt đầu trò chuyện
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
 

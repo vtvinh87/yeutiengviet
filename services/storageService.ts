@@ -92,7 +92,10 @@ export const storageService = {
       
       const { error: uploadError } = await supabase.storage
         .from('reading-audios')
-        .upload(fileName, blob);
+        .upload(fileName, blob, {
+          contentType: 'audio/wav',
+          upsert: false
+        });
 
       if (uploadError) throw uploadError;
 
@@ -112,7 +115,10 @@ export const storageService = {
       const fileName = `narration-${storyId}-${Date.now()}.wav`;
       const { error: uploadError } = await supabase.storage
         .from('story-audios')
-        .upload(fileName, blob);
+        .upload(fileName, blob, {
+          contentType: 'audio/wav',
+          upsert: false
+        });
 
       if (uploadError) throw uploadError;
 
@@ -129,45 +135,43 @@ export const storageService = {
 
   /**
    * Xóa file từ Storage dựa trên URL và tên bucket.
-   * Logic mới dùng split để lấy phần sau tên bucket, giúp xử lý chính xác hơn
-   * so với việc đếm index của các thành phần trong URL.
    */
   async deleteFileFromUrl(bucket: string, url: string | undefined | null): Promise<void> {
-    if (!url || typeof url !== 'string') return;
-    
-    // Nếu là data URL (base64) thì không cần xóa trên Storage
-    if (url.startsWith('data:')) return;
+    if (!url || typeof url !== 'string' || url.startsWith('data:')) return;
 
     try {
-      // Tìm vị trí của tên bucket trong URL
       // URL mẫu: https://.../storage/v1/object/public/reading-audios/voice-123.wav?t=...
-      const bucketMarker = `/${bucket}/`;
-      const bucketIndex = url.indexOf(bucketMarker);
+      // Chúng ta cần lấy phần sau tên bucket
+      const bucketSearchStr = `/${bucket}/`;
+      const bucketIndex = url.indexOf(bucketSearchStr);
       
       if (bucketIndex !== -1) {
-        // Lấy phần sau /bucket/
-        let filePath = url.substring(bucketIndex + bucketMarker.length);
+        let filePath = url.substring(bucketIndex + bucketSearchStr.length);
         
-        // Loại bỏ các tham số query (ví dụ ?t=123...)
+        // Loại bỏ query params (?t=...) nếu có
         filePath = filePath.split('?')[0];
         
-        // Giải mã các ký tự đặc biệt như dấu cách (%20)
+        // Giải mã URL (ví dụ %20 thành khoảng trắng)
         const decodedPath = decodeURIComponent(filePath);
         
-        console.log(`Đang xóa file: ${decodedPath} từ bucket: ${bucket}`);
+        console.log(`[Storage] Đang yêu cầu xóa file: "${decodedPath}" trong bucket: "${bucket}"`);
         
         const { error } = await supabase.storage.from(bucket).remove([decodedPath]);
         
         if (error) {
-          console.warn(`Cảnh báo: Không thể xóa file ${decodedPath} từ bucket ${bucket}.`, error);
+          console.error(`[Storage] Lỗi khi xóa file "${decodedPath}":`, error.message);
+          // Gợi ý cho developer nếu lỗi là do quyền hạn
+          if (error.message.includes('row-level security') || error.message.includes('Policy')) {
+            console.warn(`[Storage] Gợi ý: Hãy kiểm tra RLS Policy của bucket "${bucket}" trong Supabase Dashboard.`);
+          }
         } else {
-          console.log(`Đã xóa thành công file ${decodedPath} từ bucket ${bucket}`);
+          console.log(`[Storage] Đã xóa thành công file "${decodedPath}"`);
         }
       } else {
-        console.warn(`Không tìm thấy bucket marker '${bucketMarker}' trong URL: ${url}`);
+        console.warn(`[Storage] Không tìm thấy marker của bucket "${bucket}" trong URL: ${url}`);
       }
     } catch (e) {
-      console.error("Lỗi khi xử lý xóa file từ Storage:", e);
+      console.error("[Storage] Lỗi ngoại lệ khi xóa file:", e);
     }
   },
 

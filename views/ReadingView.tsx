@@ -46,6 +46,7 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
         const user = await authService.getCurrentUser();
         setIsAdmin(user?.role === 'admin');
 
+        // Lấy bài đầu tiên
         const content = await readingService.generateNextExercise();
         const audio = await aiTeacherService.generateSpeechBuffer(content.text, audioCtxRef.current!);
         
@@ -58,6 +59,9 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
         };
         setCurrentExercise(firstEx);
         if (audio) playBuffer(audio);
+        
+        // Bắt đầu nạp trước bài tiếp theo ngay lập tức
+        preloadNextContent();
       } catch (error) {
         console.error("Initial generation error:", error);
       } finally {
@@ -83,7 +87,7 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
   };
 
   const preloadNextContent = async () => {
-    if (hasStartedPreload || preloadedNext) return;
+    if (preloadedNext || hasStartedPreload) return;
     setHasStartedPreload(true);
     try {
       const nextContent = await readingService.generateNextExercise();
@@ -98,6 +102,7 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
       });
     } catch (error) {
       console.error("Preload error:", error);
+    } finally {
       setHasStartedPreload(false);
     }
   };
@@ -114,7 +119,9 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
   };
 
   const startRecording = async () => {
+    // Đảm bảo bài tiếp theo đang được chuẩn bị khi bé đang đọc
     preloadNextContent();
+    
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
@@ -137,10 +144,19 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
               const result = await readingService.analyzePronunciation(base64String, currentExercise.text);
               setFeedbackData(result);
               setShowFeedback(true);
-              if (onAwardExp) onAwardExp(Math.floor(result.accuracy / 2));
+              if (onAwardExp) onAwardExp(Math.max(5, Math.floor(result.accuracy / 2)));
             }
           } catch (error) {
             console.error("Analysis error:", error);
+            // Vẫn cho phép đi tiếp nếu lỗi AI
+            setFeedbackData({
+              score: 0,
+              accuracy: 0,
+              feedback: "Cô không nghe rõ tiếng bé, bé hãy thử đọc lại hoặc chuyển sang bài tiếp theo nhé!",
+              wordComparison: [],
+              actualTranscription: ""
+            });
+            setShowFeedback(true);
           } finally {
             setIsProcessing(false);
           }
@@ -163,37 +179,37 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
   };
 
   const handleNextExercise = async () => {
-    // Nếu bài tiếp theo đã được nạp sẵn rồi thì đổi ngay
-    if (preloadedNext) {
-      setCurrentExercise(preloadedNext);
-      setPreloadedNext(null);
-      setHasStartedPreload(false);
-      setShowFeedback(false);
-      setFeedbackData(null);
-      if (preloadedNext.audioBuffer) playBuffer(preloadedNext.audioBuffer);
-      preloadNextContent();
-      return;
-    }
-
-    // Nếu chưa có bài nạp sẵn (do AI lỗi hoặc mạng chậm), thực hiện nạp trực tiếp
     setIsSwitching(true);
     try {
-      const nextContent = await readingService.generateNextExercise();
-      const nextAudio = await aiTeacherService.generateSpeechBuffer(nextContent.text, audioCtxRef.current!);
-      
-      const newEx = {
-        title: nextContent.title,
-        text: nextContent.text,
-        imageUrl: nextContent.imageUrl,
-        audioBuffer: nextAudio,
-        isGenerated: nextContent.isGenerated
-      };
-      
-      setCurrentExercise(newEx);
-      setShowFeedback(false);
-      setFeedbackData(null);
-      if (nextAudio) playBuffer(nextAudio);
-      setHasStartedPreload(false);
+      if (preloadedNext) {
+        // Sử dụng bài đã nạp trước
+        setCurrentExercise(preloadedNext);
+        setPreloadedNext(null);
+        setShowFeedback(false);
+        setFeedbackData(null);
+        if (preloadedNext.audioBuffer) playBuffer(preloadedNext.audioBuffer);
+        
+        // Lại tiếp tục nạp trước bài kế tiếp sau khi đã đổi bài
+        setTimeout(() => preloadNextContent(), 500);
+      } else {
+        // Nếu bài nạp trước chưa xong, buộc phải đợi và nạp mới
+        const nextContent = await readingService.generateNextExercise();
+        const nextAudio = await aiTeacherService.generateSpeechBuffer(nextContent.text, audioCtxRef.current!);
+        
+        const newEx = {
+          title: nextContent.title,
+          text: nextContent.text,
+          imageUrl: nextContent.imageUrl,
+          audioBuffer: nextAudio,
+          isGenerated: nextContent.isGenerated
+        };
+        
+        setCurrentExercise(newEx);
+        setShowFeedback(false);
+        setFeedbackData(null);
+        if (nextAudio) playBuffer(nextAudio);
+        preloadNextContent();
+      }
     } catch (err) {
       console.error("Manual fetch next error:", err);
     } finally {
@@ -211,7 +227,7 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
           </div>
         </div>
         <div className="text-center">
-          <h3 className="text-2xl font-black mb-2">Đang chuẩn bị bài học...</h3>
+          <h3 className="text-2xl font-black mb-2 text-text-main dark:text-white">Đang chuẩn bị bài học...</h3>
           <p className="text-gray-500 font-medium">Cô giáo AI đang soạn bài và ghi âm giọng đọc cho bé!</p>
         </div>
       </div>
@@ -247,9 +263,13 @@ const ReadingView: React.FC<ReadingViewProps> = ({ onAwardExp }) => {
           feedback={feedbackData.feedback}
           wordComparison={feedbackData.wordComparison}
           actualTranscription={feedbackData.actualTranscription}
-          canGoNext={feedbackData.accuracy >= 80}
-          isPreloading={isSwitching || (!preloadedNext && hasStartedPreload)}
+          canGoNext={true} // LUÔN LUÔN cho phép đi tiếp
+          isPreloading={isSwitching}
           onNext={handleNextExercise}
+          onRetry={() => {
+            setShowFeedback(false);
+            setFeedbackData(null);
+          }}
         />
       )}
     </div>
