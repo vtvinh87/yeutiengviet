@@ -184,6 +184,8 @@ const DuoiHinhBatChu: React.FC<DuoiHinhBatChuProps> = ({ setView, user, onAwardE
     setRound(1);
     setGameState('loading');
     setNextChallenge(null);
+    setIsCorrect(null); // Reset trạng thái đúng sai về null để game không bị treo
+    setUserInput([]); // Xóa input cũ
 
     // Load câu đầu tiên
     const firstChallenge = await fetchSingleChallenge();

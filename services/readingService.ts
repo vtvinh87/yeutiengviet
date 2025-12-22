@@ -59,9 +59,34 @@ export const readingService = {
     }
 
     try {
+      // DANH SÁCH CHỦ ĐỀ PHONG PHÚ
+      const topics = [
+        "Thế giới động vật ngộ nghĩnh (Chó, Mèo, Voi, Thỏ...)",
+        "Các món ăn ngon Việt Nam (Phở, Bánh mì, Cơm tấm...)",
+        "Lễ hội Việt Nam (Tết Nguyên Đán, Trung Thu, Giỗ Tổ...)",
+        "Khám phá Vũ trụ và Phi hành gia",
+        "Các phương tiện giao thông (Xe lửa, Máy bay, Tàu thủy...)",
+        "Ước mơ nghề nghiệp (Bác sĩ, Giáo viên, Cầu thủ...)",
+        "Truyện cổ tích và Phép thuật",
+        "Tình bạn diệu kỳ và sự chia sẻ",
+        "Gia đình yêu thương và giúp đỡ cha mẹ",
+        "Trò chơi dân gian (Thả diều, Nhảy dây, Trốn tìm...)",
+        "Phép lịch sự và thói quen tốt hàng ngày",
+        "Thế giới đại dương đầy màu sắc",
+        "Những phát minh khoa học vui nhộn"
+      ];
+
+      // Chọn ngẫu nhiên một chủ đề
+      const randomTopic = topics[Math.floor(Math.random() * topics.length)];
+
       const textResponse = await aiClient.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: "Tạo một bài tập đọc ngắn (15-25 từ) cho học sinh lớp 1-2 Việt Nam. Chủ đề: gia đình, trường học hoặc thiên nhiên. Trả về JSON gồm title, text, và imagePrompt chi tiết bằng tiếng Anh.",
+        contents: `Tạo một bài tập đọc ngắn (20-35 từ) cho học sinh tiểu học (Lớp 1-2) tại Việt Nam.
+        CHỦ ĐỀ CỤ THỂ: ${randomTopic}.
+        Yêu cầu:
+        1. Tiêu đề ngắn gọn, hấp dẫn.
+        2. Nội dung vui tươi, giáo dục, dùng từ ngữ đơn giản, dễ đọc, phù hợp lứa tuổi.
+        3. Trả về JSON gồm: title, text, và imagePrompt (mô tả chi tiết bức tranh minh họa bằng tiếng Anh, phong cách hoạt hình 3D Pixar tươi sáng, phù hợp với nội dung).`,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -83,7 +108,7 @@ export const readingService = {
         const imageResponse = await aiClient.models.generateContent({
           model: 'gemini-2.5-flash-image',
           contents: {
-            parts: [{ text: `A vibrant, friendly 3D cartoon illustration for children: ${content.imagePrompt}` }]
+            parts: [{ text: `A vibrant, cute, friendly 3D cartoon illustration for children, Pixar style, high quality: ${content.imagePrompt}` }]
           },
           config: { imageConfig: { aspectRatio: "4:3" } }
         });
